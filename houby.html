@@ -82,6 +82,8 @@
   tr.ok input.cell.key{background:var(--lichen)}
   tr.bad input.cell{background:#E8CDBC}
   tr.solved input.cell{background:var(--moss)}
+  input.cell.given{color:var(--rust)}
+  tr.ok input.cell.given, tr.solved input.cell.given{color:#5A3416}
 
   .controls{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 6px}
   button{
@@ -97,6 +99,7 @@
 
   .status{min-height:26px;margin:6px 0 0;color:var(--muted);font-size:15px}
   .status.win{color:var(--lichen)}
+  .status.warn{color:var(--rust)}
 
   .reveal{
     margin:20px 0 0;padding:18px 20px;border-radius:10px;
@@ -121,6 +124,9 @@
   ol.clues li.done::before{content:"✓";color:var(--moss)}
   ol.clues li span{color:#DAD8CC}
   ol.clues li em{color:var(--muted);font-style:normal;font-size:14px;display:block;margin-top:2px}
+  ol.clues li em b{font-weight:500;color:var(--lichen)}
+  ol.clues li em b.out{color:var(--rust)}
+  ol.clues li.active{background:#2B332A;border-radius:6px;padding-left:8px;padding-right:8px}
 
   footer{margin-top:38px;color:#7C866F;font-size:13px;border-top:1px solid #39422F;padding-top:14px}
   @media (prefers-reduced-motion: reduce){*{transition:none!important}}
@@ -131,7 +137,7 @@
 
   <header>
     <h1>Houby a lišejníky<em>křížovka</em></h1>
-    <p class="lede">Dvanáct pojmů z kapitol 58–62. Piš <b>velkými písmeny bez diakritiky</b>; ve žlutém sloupci se ti postupně objeví tajenka — superskupina, do které houby patří.</p>
+    <p class="lede">Dvanáct pojmů z kapitol 58–62. Piš <b>velkými písmeny bez diakritiky</b>; ve žlutém sloupci se ti postupně objeví tajenka — superskupina, do které houby patří. Nápověda doplní písmeno do řádku, na kterém právě stojíš, ale jen <b>třikrát na řádek</b>.</p>
   </header>
 
   <div class="board">
@@ -140,7 +146,7 @@
 
   <div class="controls">
     <button class="primary" id="check">Zkontrolovat</button>
-    <button class="ghost" id="hint">Napovědět písmeno</button>
+    <button class="ghost" id="hint">Napovědět písmeno (3 na řádek)</button>
     <button class="ghost" id="clear">Vymazat</button>
   </div>
   <p class="status" id="status"></p>
@@ -209,6 +215,10 @@ rows.forEach((r, ri) => {
 const cells = [...document.querySelectorAll('input.cell')];
 const rowCells = ri => cells.filter(c => +c.dataset.r === ri);
 
+const HINTS_PER_ROW = 3;
+const hintsLeft = rows.map(() => HINTS_PER_ROW);
+let activeRow = 0;
+
 const strip = s => s.toUpperCase()
   .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
   .replace(/[^A-Z]/g, '');
@@ -216,6 +226,7 @@ const strip = s => s.toUpperCase()
 cells.forEach(inp => {
   inp.addEventListener('input', () => {
     inp.value = strip(inp.value).slice(-1);
+    inp.classList.remove('given');
     document.getElementById('r' + inp.dataset.r).classList.remove('ok', 'bad');
     if (inp.value) focusNext(inp, 1);
     liveCheck();
@@ -230,7 +241,7 @@ cells.forEach(inp => {
       const t = rowCells(ri)[0]; if (t) t.focus();
     }
   });
-  inp.addEventListener('focus', () => inp.select());
+  inp.addEventListener('focus', () => { inp.select(); setActive(+inp.dataset.r); });
 });
 
 function focusNext(inp, dir) {
@@ -243,10 +254,24 @@ const clues = document.getElementById('clues');
 rows.forEach((r, i) => {
   const li = document.createElement('li');
   li.id = 'c' + i;
-  li.innerHTML = '<span>' + r.c + '<em>' + r.w.length + ' písmen</em></span>';
+  li.innerHTML = '<span>' + r.c + '<em>' + r.w.length +
+    ' písmen · nápovědy: <b id="h' + i + '">' + HINTS_PER_ROW + '</b></em></span>';
   li.addEventListener('click', () => rowCells(i)[0].focus());
   clues.appendChild(li);
 });
+
+function setActive(ri) {
+  activeRow = ri;
+  rows.forEach((r, i) => document.getElementById('c' + i).classList.toggle('active', i === ri));
+}
+
+function paintHints(ri) {
+  const b = document.getElementById('h' + ri);
+  b.textContent = hintsLeft[ri];
+  b.classList.toggle('out', hintsLeft[ri] === 0);
+}
+
+setActive(0);
 
 const status = document.getElementById('status');
 const reveal = document.getElementById('reveal');
@@ -293,25 +318,48 @@ document.getElementById('check').addEventListener('click', () => {
 });
 
 document.getElementById('hint').addEventListener('click', () => {
-  const wrong = cells.filter(c => c.value !== rows[+c.dataset.r].w[+c.dataset.i]);
-  if (!wrong.length) { liveCheck(); return; }
-  const pick = wrong[Math.floor(Math.random() * wrong.length)];
-  pick.value = rows[+pick.dataset.r].w[+pick.dataset.i];
-  document.getElementById('r' + pick.dataset.r).classList.remove('ok', 'bad');
-  pick.focus();
+  const ri = activeRow;
   status.className = 'status';
-  status.textContent = 'Doplněno jedno písmeno.';
+
+  if (rowDone(ri)) {
+    status.textContent = 'Řádek ' + (ri + 1) + ' už máš správně. Klepni na jiné heslo a zkus to tam.';
+    return;
+  }
+  if (hintsLeft[ri] === 0) {
+    status.className = 'status warn';
+    status.textContent = 'Limit nápovědy je vyčerpán — heslo ' + (ri + 1) + ' už musíš doplnit sám.';
+    return;
+  }
+
+  const wrong = rowCells(ri).filter(c => c.value !== rows[ri].w[+c.dataset.i]);
+  const pick = wrong[Math.floor(Math.random() * wrong.length)];
+  pick.value = rows[ri].w[+pick.dataset.i];
+  pick.classList.add('given');
+  document.getElementById('r' + ri).classList.remove('ok', 'bad');
+
+  hintsLeft[ri]--;
+  paintHints(ri);
+  if (hintsLeft[ri] > 0) {
+    status.textContent = 'Doplněno písmeno. V tomhle hesle ti zbývají nápovědy: ' + hintsLeft[ri] + '.';
+  } else {
+    status.className = 'status warn';
+    status.textContent = 'Doplněno poslední písmeno — limit nápovědy pro heslo ' + (ri + 1) + ' je vyčerpán.';
+  }
+
+  const next = rowCells(ri).find(c => !c.value);
+  if (next) next.focus();
   liveCheck();
 });
 
 document.getElementById('clear').addEventListener('click', () => {
-  cells.forEach(c => c.value = '');
+  cells.forEach(c => { c.value = ''; c.classList.remove('given'); });
   rows.forEach((r, i) => {
     document.getElementById('r' + i).classList.remove('ok', 'bad', 'solved');
     document.getElementById('c' + i).classList.remove('done');
   });
   reveal.classList.remove('show');
-  status.className = 'status'; status.textContent = '';
+  status.className = 'status';
+  status.textContent = 'Mřížka je prázdná. Vyčerpané nápovědy se nevrací.';
   cells[0].focus();
 });
 </script>
