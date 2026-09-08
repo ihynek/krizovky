@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5">
+<title>Křížovka — Houby a lišejníky</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bark:#20261E;
+    --panel:#2B332A;
+    --panel-2:#374033;
+    --paper:#EDEADF;
+    --ink:#1B211A;
+    --lichen:#C9D93F;
+    --moss:#8FAE5C;
+    --rust:#CE6A33;
+    --muted:#9FA894;
+    --cell: clamp(21px, 6.1vw, 34px);
+    --gap: 2px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #2C352A 0%, var(--bark) 60%),
+      var(--bark);
+    color:var(--paper);
+    font-family:"IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size:16px;
+    line-height:1.5;
+    -webkit-text-size-adjust:100%;
+  }
+  .wrap{max-width:860px;margin:0 auto;padding:28px 16px 64px}
+
+  header{margin-bottom:22px}
+  h1{
+    font-family:"Fraunces", Georgia, serif;
+    font-weight:700;
+    font-size:clamp(30px,7.5vw,52px);
+    line-height:1.02;
+    letter-spacing:-0.02em;
+    margin:0 0 8px;
+    color:var(--paper);
+  }
+  h1 em{font-style:normal;display:block;color:var(--lichen)}
+  .lede{color:var(--muted);max-width:56ch;margin:0}
+  .lede b{color:var(--paper);font-weight:500}
+
+  .board{
+    margin:26px 0 8px;
+    overflow-x:auto;
+    padding-bottom:6px;
+    -webkit-overflow-scrolling:touch;
+  }
+  table.grid{border-collapse:separate;border-spacing:var(--gap);margin:0 auto}
+  td.num{
+    font-size:12px;color:var(--muted);text-align:right;
+    padding-right:6px;font-variant-numeric:tabular-nums;
+    width:22px;
+  }
+  td.empty{width:var(--cell)}
+  td.cellbox{padding:0}
+  input.cell{
+    width:var(--cell);height:var(--cell);
+    border:none;border-radius:3px;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",sans-serif;
+    font-size:calc(var(--cell) * 0.56);
+    font-weight:600;
+    text-align:center;
+    text-transform:uppercase;
+    padding:0;
+    caret-color:var(--rust);
+  }
+  input.cell:focus{outline:2px solid var(--rust);outline-offset:1px}
+  input.cell.key{background:var(--lichen);box-shadow:inset 0 0 0 1px rgba(0,0,0,.25)}
+  tr.ok input.cell{background:var(--moss);color:#12180F}
+  tr.ok input.cell.key{background:var(--lichen)}
+  tr.bad input.cell{background:#E8CDBC}
+  tr.solved input.cell{background:var(--moss)}
+
+  .controls{display:flex;flex-wrap:wrap;gap:10px;margin:18px 0 6px}
+  button{
+    font-family:inherit;font-size:15px;font-weight:500;
+    padding:11px 18px;border-radius:999px;cursor:pointer;
+    border:1px solid transparent;transition:background .12s ease, color .12s ease;
+  }
+  .primary{background:var(--lichen);color:#1B211A}
+  .primary:hover{background:#D7E75A}
+  .ghost{background:transparent;color:var(--paper);border-color:#4B5646}
+  .ghost:hover{background:var(--panel-2)}
+  button:focus-visible{outline:2px solid var(--rust);outline-offset:2px}
+
+  .status{min-height:26px;margin:6px 0 0;color:var(--muted);font-size:15px}
+  .status.win{color:var(--lichen)}
+
+  .reveal{
+    margin:20px 0 0;padding:18px 20px;border-radius:10px;
+    background:var(--panel);border-left:4px solid var(--lichen);
+    display:none;
+  }
+  .reveal.show{display:block}
+  .reveal h2{font-family:"Fraunces",Georgia,serif;font-size:26px;margin:0 0 6px;color:var(--lichen);letter-spacing:.06em}
+  .reveal p{margin:0;color:var(--muted);max-width:60ch}
+
+  ol.clues{margin:34px 0 0;padding:0;list-style:none;counter-reset:c}
+  ol.clues li{
+    counter-increment:c;
+    display:grid;grid-template-columns:30px 1fr;gap:12px;
+    padding:11px 0;border-top:1px solid #39422F;
+  }
+  ol.clues li::before{
+    content:counter(c);
+    font-variant-numeric:tabular-nums;
+    color:var(--lichen);font-weight:600;font-size:15px;padding-top:1px;
+  }
+  ol.clues li.done::before{content:"✓";color:var(--moss)}
+  ol.clues li span{color:#DAD8CC}
+  ol.clues li em{color:var(--muted);font-style:normal;font-size:14px;display:block;margin-top:2px}
+
+  footer{margin-top:38px;color:#7C866F;font-size:13px;border-top:1px solid #39422F;padding-top:14px}
+  @media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Houby a lišejníky<em>křížovka</em></h1>
+    <p class="lede">Dvanáct pojmů z kapitol 58–62. Piš <b>velkými písmeny bez diakritiky</b>; ve žlutém sloupci se ti postupně objeví tajenka — superskupina, do které houby patří.</p>
+  </header>
+
+  <div class="board">
+    <table class="grid" id="grid" aria-label="Křížovka"></table>
+  </div>
+
+  <div class="controls">
+    <button class="primary" id="check">Zkontrolovat</button>
+    <button class="ghost" id="hint">Napovědět písmeno</button>
+    <button class="ghost" id="clear">Vymazat</button>
+  </div>
+  <p class="status" id="status"></p>
+
+  <div class="reveal" id="reveal">
+    <h2 id="tajenka"></h2>
+    <p>Superskupina eukaryot, do níž patří houby, živočichové, trubénky i hmyzomorky. Název odkazuje na zadní tlačný bičík (řec. <i>opisthios</i> = zadní, <i>kontos</i> = bičík).</p>
+  </div>
+
+  <ol class="clues" id="clues"></ol>
+
+  <footer>Biologie · Gymnázium Joachima Barranda Beroun · zdroj: Biologie v souvislostech 1, kap. 58–62</footer>
+</div>
+
+<script>
+const KEYCOL = 6; // sloupec tajenky (1-indexovaný)
+
+const DATA = [
+  {w:"PLODNICE",   k:3,  c:"Útvar z nepravého houbového pletiva, na němž dozrávají výtrusy; u stopkovýtrusých nejčastěji třeň a klobouk."},
+  {w:"SAPROTROFIE",k:3,  c:"Způsob výživy, při němž houba rozkládá odumřelé organismy."},
+  {w:"MYCELIUM",   k:6,  c:"Soubor houbových vláken, česky podhoubí."},
+  {w:"ASKOSPORA",  k:2,  c:"Výtrus vznikající ve vřecku — je jich tam vždy osm."},
+  {w:"CHITIN",     k:4,  c:"Polysacharid buněčné stěny hub, který najdeme i ve vnější kostře členovců."},
+  {w:"HYFA",       k:1,  c:"Jedno houbové vlákno, které přirůstá na špičce."},
+  {w:"KONIDIE",    k:2,  c:"Nepohlavní výtrus vznikající mitózou na specializovaných buňkách."},
+  {w:"MYKORHIZA",  k:3,  c:"Symbiotické soužití hub s kořeny vyšších rostlin."},
+  {w:"SPORANGIUM", k:3,  c:"Kulovitá výtrusnice spájivých hub; měchomršť ji vystřeluje až dva metry daleko."},
+  {w:"NAMEL",      k:1,  c:"Černé sklerocium paličkovice nachové vyčnívající z klasu obilí; způsobilo ergotismus."},
+  {w:"TERCNIK",    k:1,  c:"Žlutý lišejník (…zední), který podél silnic indikuje znečištění dusíkem."},
+  {w:"BAZIDIE",    k:2,  c:"Buňka, na jejíchž tenkých stopkách vznikají čtyři výtrusy stopkovýtrusých hub."}
+];
+
+const rows = DATA.map(d => ({...d, off: KEYCOL - d.k}));
+const width = Math.max(...rows.map(r => r.off + r.w.length));
+
+const grid = document.getElementById('grid');
+rows.forEach((r, ri) => {
+  const tr = document.createElement('tr');
+  tr.id = 'r' + ri;
+  const num = document.createElement('td');
+  num.className = 'num'; num.textContent = (ri + 1);
+  tr.appendChild(num);
+  for (let c = 1; c <= width; c++) {
+    const td = document.createElement('td');
+    const idx = c - r.off - 1;
+    if (idx >= 0 && idx < r.w.length) {
+      td.className = 'cellbox';
+      const inp = document.createElement('input');
+      inp.className = 'cell' + (c === KEYCOL ? ' key' : '');
+      inp.maxLength = 1;
+      inp.inputMode = 'text';
+      inp.autocapitalize = 'characters';
+      inp.autocomplete = 'off';
+      inp.spellcheck = false;
+      inp.dataset.r = ri; inp.dataset.i = idx;
+      inp.setAttribute('aria-label', 'Řádek ' + (ri + 1) + ', písmeno ' + (idx + 1));
+      td.appendChild(inp);
+    } else {
+      td.className = 'empty';
+    }
+    tr.appendChild(td);
+  }
+  grid.appendChild(tr);
+});
+
+const cells = [...document.querySelectorAll('input.cell')];
+const rowCells = ri => cells.filter(c => +c.dataset.r === ri);
+
+const strip = s => s.toUpperCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^A-Z]/g, '');
+
+cells.forEach(inp => {
+  inp.addEventListener('input', () => {
+    inp.value = strip(inp.value).slice(-1);
+    document.getElementById('r' + inp.dataset.r).classList.remove('ok', 'bad');
+    if (inp.value) focusNext(inp, 1);
+    liveCheck();
+  });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !inp.value) { e.preventDefault(); focusNext(inp, -1); }
+    if (e.key === 'ArrowRight') { e.preventDefault(); focusNext(inp, 1); }
+    if (e.key === 'ArrowLeft')  { e.preventDefault(); focusNext(inp, -1); }
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      const ri = +inp.dataset.r + (e.key === 'ArrowDown' ? 1 : -1);
+      const t = rowCells(ri)[0]; if (t) t.focus();
+    }
+  });
+  inp.addEventListener('focus', () => inp.select());
+});
+
+function focusNext(inp, dir) {
+  const rc = rowCells(+inp.dataset.r);
+  const pos = rc.indexOf(inp) + dir;
+  if (rc[pos]) rc[pos].focus();
+}
+
+const clues = document.getElementById('clues');
+rows.forEach((r, i) => {
+  const li = document.createElement('li');
+  li.id = 'c' + i;
+  li.innerHTML = '<span>' + r.c + '<em>' + r.w.length + ' písmen</em></span>';
+  li.addEventListener('click', () => rowCells(i)[0].focus());
+  clues.appendChild(li);
+});
+
+const status = document.getElementById('status');
+const reveal = document.getElementById('reveal');
+
+function rowText(ri) { return rowCells(ri).map(c => c.value || ' ').join(''); }
+function rowDone(ri) { return rowText(ri) === rows[ri].w; }
+
+function liveCheck() {
+  let done = 0;
+  rows.forEach((r, i) => {
+    const ok = rowDone(i);
+    document.getElementById('c' + i).classList.toggle('done', ok);
+    if (ok) done++;
+  });
+  if (done === rows.length) win();
+  return done;
+}
+
+function win() {
+  rows.forEach((r, i) => {
+    const tr = document.getElementById('r' + i);
+    tr.classList.remove('bad'); tr.classList.add('solved');
+  });
+  document.getElementById('tajenka').textContent =
+    rows.map(r => r.w[r.k - 1]).join('');
+  reveal.classList.add('show');
+  status.className = 'status win';
+  status.textContent = 'Hotovo — celá křížovka sedí.';
+}
+
+document.getElementById('check').addEventListener('click', () => {
+  let ok = 0, empty = 0;
+  rows.forEach((r, i) => {
+    const tr = document.getElementById('r' + i);
+    tr.classList.remove('ok', 'bad');
+    const t = rowText(i);
+    if (t.trim() === '') { empty++; return; }
+    if (t === r.w) { tr.classList.add('ok'); ok++; } else { tr.classList.add('bad'); }
+  });
+  status.className = 'status';
+  if (ok === rows.length) { win(); return; }
+  status.textContent = 'Správně ' + ok + ' z ' + rows.length +
+    (empty ? ' · nevyplněných řádků: ' + empty : '') + '. Červené řádky ještě oprav.';
+});
+
+document.getElementById('hint').addEventListener('click', () => {
+  const wrong = cells.filter(c => c.value !== rows[+c.dataset.r].w[+c.dataset.i]);
+  if (!wrong.length) { liveCheck(); return; }
+  const pick = wrong[Math.floor(Math.random() * wrong.length)];
+  pick.value = rows[+pick.dataset.r].w[+pick.dataset.i];
+  document.getElementById('r' + pick.dataset.r).classList.remove('ok', 'bad');
+  pick.focus();
+  status.className = 'status';
+  status.textContent = 'Doplněno jedno písmeno.';
+  liveCheck();
+});
+
+document.getElementById('clear').addEventListener('click', () => {
+  cells.forEach(c => c.value = '');
+  rows.forEach((r, i) => {
+    document.getElementById('r' + i).classList.remove('ok', 'bad', 'solved');
+    document.getElementById('c' + i).classList.remove('done');
+  });
+  reveal.classList.remove('show');
+  status.className = 'status'; status.textContent = '';
+  cells[0].focus();
+});
+</script>
+</body>
+</html>
