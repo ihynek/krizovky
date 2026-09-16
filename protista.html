@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Křížovka – Protista</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦠</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --water:#e6f1ee;
+    --slide:#fbfdfc;
+    --ink:#173a3f;
+    --muted:#5b7a7b;
+    --line:#b9d3cf;
+    --stain:#6d3f8f;      /* barvivo – aktivní řádek */
+    --stain-soft:#efe6f5;
+    --amber:#f2c14e;      /* sloupec tajenky */
+    --amber-soft:#fbe9b8;
+    --ok:#2f7d5b;
+    --ok-soft:#dcefe4;
+    --bad:#b3412e;
+    --bad-soft:#f6ddd7;
+    --given:#b3412e;
+    --cell:clamp(17px, calc((100vw - 56px) / 18), 30px);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--water);color:var(--ink);
+    font-family:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;line-height:1.5}
+  main{max-width:1160px;margin:0 auto;padding:28px 16px 48px}
+  header{margin-bottom:20px}
+  h1{font-family:"Literata",Georgia,serif;font-weight:700;font-size:clamp(28px,5vw,44px);line-height:1.05;margin:0 0 6px;letter-spacing:-.01em}
+  .sub{margin:0;color:var(--muted);max-width:68ch}
+  .layout{display:grid;grid-template-columns:auto minmax(340px,1fr);gap:28px;align-items:start}
+  @media (max-width:1000px){.layout{grid-template-columns:1fr}}
+
+  /* sklíčko s mřížkou */
+  .slide{background:var(--slide);border:1px solid var(--line);border-radius:18px;padding:18px 14px;
+    box-shadow:0 1px 0 #fff inset, 0 8px 24px -18px rgba(23,58,63,.5);overflow-x:auto}
+  .grid{display:flex;flex-direction:column;gap:3px;width:max-content;margin:0 auto}
+  .row{display:flex;align-items:center;gap:2px;border-radius:6px;padding:1px 2px}
+  .row.active{background:var(--stain-soft)}
+  .num{width:var(--cell);text-align:right;padding-right:5px;font-size:calc(var(--cell)*.42);color:var(--muted);font-variant-numeric:tabular-nums}
+  .gap{width:var(--cell);height:var(--cell);flex:none}
+  .cell{width:var(--cell);height:var(--cell);flex:none;border:1.5px solid #8fb3ae;border-radius:4px;background:#fff;
+    text-align:center;font:700 calc(var(--cell)*.55)/1 "Atkinson Hyperlegible",sans-serif;color:var(--ink);
+    text-transform:uppercase;padding:0;caret-color:var(--stain)}
+  .cell:focus{outline:2px solid var(--stain);outline-offset:1px;border-color:var(--stain)}
+  .cell.key{background:var(--amber-soft);border-color:#d7a53a}
+  .cell.given{color:var(--given)}
+  .row.ok .cell{background:var(--ok-soft);border-color:#7fb89a}
+  .row.ok .cell.key{background:var(--amber);border-color:#c8962c}
+  .row.bad .cell{background:var(--bad-soft);border-color:#d99a8e}
+
+  .tajenka{margin:16px auto 0;text-align:center;font-family:"Literata",Georgia,serif;font-size:clamp(18px,3vw,24px);
+    letter-spacing:.14em;color:var(--muted);min-height:1.6em}
+  .tajenka.done{color:var(--ink)}
+  .reveal{display:none;margin:10px auto 0;max-width:52ch;text-align:center;background:var(--amber-soft);
+    border-radius:12px;padding:12px 16px}
+  .reveal.show{display:block;animation:pop .5s ease-out}
+  @keyframes pop{from{transform:scale(.96);opacity:0}to{transform:none;opacity:1}}
+  @media (prefers-reduced-motion:reduce){.reveal.show{animation:none}}
+
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;justify-content:center}
+  button{font:inherit;font-weight:700;border-radius:999px;padding:9px 18px;cursor:pointer;border:1.5px solid var(--ink);background:var(--ink);color:#fff}
+  button.ghost{background:transparent;color:var(--ink)}
+  button.hint{background:var(--stain);border-color:var(--stain)}
+  button:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+  .status{min-height:1.5em;margin:12px 0 0;text-align:center;font-weight:700}
+  .status.win{color:var(--ok)}
+  .status.warn{color:var(--bad)}
+
+  /* legenda */
+  .clues h2{font-family:"Literata",Georgia,serif;font-size:20px;margin:0 0 10px}
+  .clues ol{list-style:none;margin:0;padding:0;counter-reset:c}
+  .clues li{display:grid;grid-template-columns:2em 1fr 6.5em;gap:8px;align-items:baseline;padding:7px 10px;border-radius:10px;cursor:pointer;border:1px solid transparent}
+  .clues li:hover{background:#f3f8f7}
+  .clues li.active{background:var(--stain-soft);border-color:#cdb5de}
+  .clues li.done .txt{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--ok)}
+  .clues .n{font-variant-numeric:tabular-nums;color:var(--muted);text-align:right}
+  .clues .len{color:var(--muted);font-size:.9em}
+  .clues .h{font-size:.78em;color:var(--stain);white-space:nowrap;text-align:right}
+  .clues .h.zero{color:var(--bad);font-weight:700}
+  .note{color:var(--muted);font-size:.92em;margin-top:14px}
+  @media (max-width:600px){
+    :root{--cell:calc((100vw - 66px) / 17.8)}
+    main{padding:20px 10px 40px}
+    .slide{padding:14px 8px;border-radius:14px}
+    .row{gap:1px;padding:1px}
+    .num{width:calc(var(--cell)*.8);padding-right:3px}
+    .cell{border-width:1px;border-radius:3px}
+  }
+  footer{margin-top:28px;color:var(--muted);font-size:.85em;text-align:center}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Protista pod mikroskopem</h1>
+    <p class="sub">Doplň pojmy z prvních tří hodin. Ve žlutém sloupci se postupně objeví tajenka – jev typický pro nálevníky. Piš bez diakritiky, kurzor sám skočí dál. Nápověda doplní písmeno do řádku, na kterém stojíš, ale jen <b>třikrát na heslo</b>.</p>
+  </header>
+
+  <div class="layout">
+    <section class="slide" aria-label="Křížovka">
+      <div class="grid" id="grid"></div>
+      <div class="tajenka" id="taj" aria-live="polite"></div>
+      <div class="reveal" id="reveal">
+        <b>Jaderný dualismus</b> – nálevníci mají dvě jádra: velký <b>makronukleus</b> řídí chod buňky, malý <b>mikronukleus</b> se uplatní při konjugaci.
+      </div>
+      <div class="controls">
+        <button id="check">Zkontrolovat</button>
+        <button id="hint" class="hint">Nápověda</button>
+        <button id="clear" class="ghost">Vymazat</button>
+      </div>
+      <p class="status" id="status" aria-live="polite"></p>
+    </section>
+
+    <section class="clues">
+      <h2>Legenda</h2>
+      <ol id="clues"></ol>
+      <p class="note">Počet písmen je v závorce. Napovězená písmena jsou v mřížce červeně.</p>
+    </section>
+  </div>
+  <footer>Biologie · Gymnázium Joachima Barranda Beroun</footer>
+</main>
+
+<script>
+const HINTS_PER_ROW = 3;
+const DATA = [
+  ["RUNBR1VKTk9L", 4, "Výměna mikronukleí mezi dvěma nálevníky; počet jedinců se nezvyšuje"],
+  ["TEVLQ0VBSA==", 2, "Německý biolog, který v roce 1866 zavedl pojem Protista"],
+  ["QUJPQ1NJRA==", 1, "Superskupina, do které patří krásnoočka a trypanozomy"],
+  ["QUxVS0lMRVA=", 2, "Zpevněná pružná vrstva pod membránou trepky a krásnoočka"],
+  ["UkVLQVRUSUhX", 9, "Autor systému pěti říší z roku 1969"],
+  ["VE5PTFBBSA==", 6, "Organismus s haploidními buňkami, diploidní je jen zygota"],
+  ["QVRTWUM=", 2, "Odolné klidové stadium, slouží i k přenosu parazitů"],
+  ["RUlET1BPRFVFU1A=", 5, "Odborný název panožek"],
+  ["QVRPWVJBS1VF", 2, "Doména, do které protista patří"],
+  ["QVRBTE9FVkxB", 1, "Skupina SAR s plochými měchýřky pod membránou (nálevníci, obrněnky, výtrusovci)"],
+  ["QUtDSVRFTFlGQVJBUA==", 7, "Jaká skupina jsou protista – obsahuje předka, ale jen část jeho potomků"],
+  ["RUlGT1JUT1hJTQ==", 2, "Kombinace autotrofní a heterotrofní výživy (krásnoočko ve tmě)"],
+  ["QU1HSVRT", 1, "Červená světločivná skvrna krásnoočka"],
+  ["QU9aT0JFT01B", 2, "Superskupina měňavek a hlenek"],
+  ["QUxPVUtBVg==", 4, "Pulzující … odčerpává přebytečnou vodu ze sladkovodních protist"],
+  ["QVpPSUJNWVNPRE5F", 5, "Proces, kterým vznikly mitochondrie a plastidy"],
+];
+const rows = DATA.map(([e, k, clue]) => ({ w: atob(e).split("").reverse().join(""), k: k - 1, clue }));
+const K = Math.max(...rows.map(r => r.k));
+const WIDTH = Math.max(...rows.map(r => K - r.k + r.w.length));
+const hintsLeft = rows.map(() => HINTS_PER_ROW);
+
+const grid = document.getElementById("grid");
+const cluesEl = document.getElementById("clues");
+const status = document.getElementById("status");
+const taj = document.getElementById("taj");
+const reveal = document.getElementById("reveal");
+let activeRow = 0;
+
+const norm = s => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z]/g, "");
+
+rows.forEach((r, ri) => {
+  const row = document.createElement("div");
+  row.className = "row"; row.id = "r" + ri;
+  const n = document.createElement("span");
+  n.className = "num"; n.textContent = ri + 1;
+  row.appendChild(n);
+  const off = K - r.k;
+  for (let i = 0; i < WIDTH; i++) {
+    const li = i - off;
+    if (li < 0 || li >= r.w.length) {
+      if (li < 0) { const g = document.createElement("span"); g.className = "gap"; row.appendChild(g); }
+      continue;
+    }
+    const inp = document.createElement("input");
+    inp.className = "cell" + (li === r.k ? " key" : "");
+    inp.maxLength = 2;
+    inp.autocomplete = "off";
+    inp.setAttribute("autocapitalize", "characters");
+    inp.setAttribute("spellcheck", "false");
+    inp.setAttribute("aria-label", `Heslo ${ri + 1}, písmeno ${li + 1}`);
+    inp.dataset.r = ri; inp.dataset.i = li;
+    row.appendChild(inp);
+  }
+  grid.appendChild(row);
+
+  const item = document.createElement("li");
+  item.id = "c" + ri;
+  item.innerHTML = `<span class="n">${ri + 1}.</span><span class="txt">${r.clue} <span class="len">(${r.w.length})</span></span><span class="h" id="h${ri}">nápovědy: ${HINTS_PER_ROW}</span>`;
+  item.addEventListener("click", () => { setActive(ri); const c = rowCells(ri).find(x => !x.value) || rowCells(ri)[0]; c.focus(); });
+  cluesEl.appendChild(item);
+});
+
+const cells = [...grid.querySelectorAll(".cell")];
+const rowCells = ri => cells.filter(c => +c.dataset.r === ri);
+
+function setActive(ri) {
+  activeRow = ri;
+  rows.forEach((_, i) => {
+    document.getElementById("r" + i).classList.toggle("active", i === ri);
+    document.getElementById("c" + i).classList.toggle("active", i === ri);
+  });
+}
+function paintHints(ri) {
+  const h = document.getElementById("h" + ri);
+  h.textContent = "nápovědy: " + hintsLeft[ri];
+  h.classList.toggle("zero", hintsLeft[ri] === 0);
+}
+function rowValue(ri) { return rowCells(ri).map(c => c.value || " ").join(""); }
+
+function liveCheck() {
+  let solved = 0;
+  rows.forEach((r, ri) => {
+    const ok = rowValue(ri) === r.w;
+    document.getElementById("r" + ri).classList.toggle("ok", ok);
+    document.getElementById("c" + ri).classList.toggle("done", ok);
+    if (ok) solved++;
+  });
+  taj.textContent = rows.map((r, ri) => {
+    const v = rowCells(ri)[r.k].value;
+    return v && rowValue(ri) === r.w ? v : "·";
+  }).join(" ");
+  const all = solved === rows.length;
+  taj.classList.toggle("done", all);
+  if (all && !reveal.classList.contains("show")) {
+    reveal.classList.add("show");
+    status.className = "status win";
+    status.textContent = "Hotovo! Všech " + rows.length + " hesel je správně.";
+  }
+  return solved;
+}
+
+cells.forEach(c => {
+  c.addEventListener("focus", () => { setActive(+c.dataset.r); c.select(); });
+  c.addEventListener("input", () => {
+    const v = norm(c.value);
+    c.value = v.slice(-1);
+    c.classList.remove("given");
+    document.getElementById("r" + c.dataset.r).classList.remove("bad");
+    if (c.value) {
+      const rc = rowCells(+c.dataset.r);
+      const nx = rc[+c.dataset.i + 1];
+      if (nx) nx.focus();
+    }
+    liveCheck();
+  });
+  c.addEventListener("keydown", e => {
+    const ri = +c.dataset.r, i = +c.dataset.i, rc = rowCells(ri);
+    if (e.key === "Backspace" && !c.value && i > 0) { e.preventDefault(); rc[i - 1].value = ""; rc[i - 1].focus(); liveCheck(); }
+    else if (e.key === "ArrowLeft" && i > 0) { e.preventDefault(); rc[i - 1].focus(); }
+    else if (e.key === "ArrowRight" && i < rc.length - 1) { e.preventDefault(); rc[i + 1].focus(); }
+    else if (e.key === "ArrowDown" || e.key === "Enter") { e.preventDefault(); moveRow(ri + 1); }
+    else if (e.key === "ArrowUp") { e.preventDefault(); moveRow(ri - 1); }
+  });
+});
+function moveRow(ri) {
+  if (ri < 0 || ri >= rows.length) return;
+  const rc = rowCells(ri);
+  (rc.find(x => !x.value) || rc[0]).focus();
+}
+
+document.getElementById("check").addEventListener("click", () => {
+  let wrong = 0, empty = 0;
+  rows.forEach((r, ri) => {
+    const v = rowValue(ri);
+    const el = document.getElementById("r" + ri);
+    if (v === r.w) return;
+    if (!v.trim()) { empty++; el.classList.remove("bad"); return; }
+    wrong++; el.classList.add("bad");
+  });
+  const solved = liveCheck();
+  if (solved === rows.length) return;
+  status.className = "status";
+  status.textContent = `Správně: ${solved} z ${rows.length}.` +
+    (wrong ? ` Chybně nebo neúplně: ${wrong} (červeně).` : "") +
+    (empty ? ` Nevyplněno: ${empty}.` : "");
+});
+
+document.getElementById("hint").addEventListener("click", () => {
+  const ri = activeRow, r = rows[ri];
+  if (rowValue(ri) === r.w) {
+    status.className = "status";
+    status.textContent = `Heslo ${ri + 1} už máš správně. Klikni do jiného řádku.`;
+    return;
+  }
+  if (hintsLeft[ri] === 0) {
+    status.className = "status warn";
+    status.textContent = `Limit nápovědy je vyčerpán – heslo ${ri + 1} už musíš doplnit sám.`;
+    return;
+  }
+  const rc = rowCells(ri);
+  const wrong = rc.filter(c => c.value !== r.w[+c.dataset.i]);
+  const pick = wrong[Math.floor(Math.random() * wrong.length)];
+  pick.value = r.w[+pick.dataset.i];
+  pick.classList.add("given");
+  document.getElementById("r" + ri).classList.remove("bad");
+  hintsLeft[ri]--;
+  paintHints(ri);
+  if (hintsLeft[ri] > 0) {
+    status.className = "status";
+    status.textContent = `Doplněno písmeno. V tomhle hesle ti zbývají nápovědy: ${hintsLeft[ri]}.`;
+  } else {
+    status.className = "status warn";
+    status.textContent = `Doplněno poslední písmeno – limit nápovědy pro heslo ${ri + 1} je vyčerpán.`;
+  }
+  const next = rc.find(c => !c.value);
+  (next || pick).focus();
+  liveCheck();
+});
+
+document.getElementById("clear").addEventListener("click", () => {
+  cells.forEach(c => { c.value = ""; c.classList.remove("given"); });
+  rows.forEach((_, i) => document.getElementById("r" + i).classList.remove("ok", "bad"));
+  reveal.classList.remove("show");
+  liveCheck();
+  status.className = "status";
+  status.textContent = "Mřížka je prázdná. Vyčerpané nápovědy se nevrací.";
+  cells[0].focus();
+});
+
+setActive(0);
+liveCheck();
+</script>
+</body>
+</html>
