@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Křížovka – Tkáně</title>
+<style>
+:root{--main:#1F4E79;--light:#DEEAF6;--taj:#FFE699;--ok:#C6EFCE;--bad:#FFC7CE;--hint:#D9D2E9}
+*{box-sizing:border-box}
+body{font-family:Calibri,"Segoe UI",Arial,sans-serif;background:#f4f7fb;margin:0;padding:20px;color:#222}
+.wrap{max-width:1000px;margin:auto;background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.1);padding:24px}
+h1{color:var(--main);text-align:center;margin:0 0 4px}
+.sub{text-align:center;color:#555;margin-bottom:20px}
+.layout{display:flex;gap:28px;flex-wrap:wrap;justify-content:center}
+.gridbox{overflow-x:auto}
+table.grid{border-collapse:collapse}
+table.grid td{width:38px;height:38px;padding:0}
+td.num{font-weight:bold;color:var(--main);text-align:right;padding-right:6px;width:28px;cursor:pointer}
+td.cell{border:1.5px solid #555}
+td.cell input{width:100%;height:100%;border:none;text-align:center;font-size:20px;font-weight:bold;text-transform:uppercase;background:transparent;outline:none;font-family:inherit}
+td.cell.taj{background:var(--taj);border:2.5px solid #bf9000}
+td.cell.active{background:var(--light)}
+td.cell.taj.active{background:#ffd966}
+td.cell.ok{background:var(--ok)}
+td.cell.bad{background:var(--bad)}
+td.cell.hinted input{color:#5b2c83}
+.clues{flex:1;min-width:320px}
+.clue{padding:8px 10px;border-radius:8px;margin-bottom:6px;border:1px solid #e0e0e0;cursor:pointer}
+.clue.active{background:var(--light);border-color:var(--main)}
+.clue.solved{border-left:5px solid #2e7d32}
+.clue b{color:var(--main)}
+.clue .row2{display:flex;align-items:center;gap:10px;margin-top:5px;font-size:13px}
+.hbtn{background:var(--hint);border:none;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:13px}
+.hbtn:disabled{opacity:.5;cursor:default}
+.hmsg{color:#c00;font-weight:bold}
+.controls{text-align:center;margin-top:20px}
+.controls button{background:var(--main);color:#fff;border:none;border-radius:8px;padding:10px 20px;font-size:16px;margin:4px;cursor:pointer}
+.controls button.sec{background:#888}
+.tajbox{text-align:center;margin-top:18px;font-size:17px}
+.tajbox input{font-size:18px;padding:6px 10px;border:2px solid #bf9000;border-radius:6px;text-transform:uppercase;width:220px}
+#result{text-align:center;margin-top:14px;font-size:18px;font-weight:bold;min-height:24px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Křížovka – TKÁNĚ</h1>
+<div class="sub">Doplň pojmy do řádků. Ve žlutém sloupci vznikne tajenka. U každé legendy máš max. 3 nápovědy (odkrytí písmene). Piš bez diakritiky.</div>
+<div class="layout">
+  <div class="gridbox"><table class="grid" id="grid"></table></div>
+  <div class="clues" id="clues"></div>
+</div>
+<div class="tajbox">Tajenka – věda o tkáních: <input id="tajIn" maxlength="20"></div>
+<div class="controls">
+  <button onclick="check()">Zkontrolovat</button>
+  <button class="sec" onclick="resetAll()">Začít znovu</button>
+</div>
+<div id="result"></div>
+</div>
+<script>
+const TAJENKA="HISTOLOGIE";
+const DATA=[
+ {w:"CHRUPAVKA",t:1,c:"Pojivová tkáň bez cév, tvoří např. ušní boltec nebo kloubní plochy."},
+ {w:"EPITEL",t:2,c:"Tkáň s minimem mezibuněčné hmoty nasedající na bazální membránu."},
+ {w:"SYNAPSE",t:0,c:"Místo přenosu vzruchu z neuronu na další buňku."},
+ {w:"AKTIN",t:2,c:"Bílkovina myofibril, která se při stahu zasouvá mezi vlákna myozinu."},
+ {w:"OSTEON",t:0,c:"Základní stavební jednotka hutné kosti (Haversův systém)."},
+ {w:"ENDOTEL",t:6,c:"Jednovrstevný dlaždicový epitel vystýlající cévy."},
+ {w:"OKOSTICE",t:0,c:"Blána na povrchu kosti zajišťující výživu, růst do šířky a hojení zlomenin."},
+ {w:"NEUROGLIE",t:5,c:"Souhrnný název podpůrných buněk nervové tkáně."},
+ {w:"MIKROKLKY",t:1,c:"Výběžky buněk resorpčního epitelu zvětšující povrch (např. v tenkém střevě)."},
+ {w:"MEZENCHYM",t:1,c:"Embryonální pojivo, ze kterého vznikají pojivové tkáně."}
+];
+const MAXH=3;
+const COL=Math.max(...DATA.map(d=>d.t));
+const WIDTH=Math.max(...DATA.map(d=>COL-d.t+d.w.length));
+let inputs=[],hints=DATA.map(()=>0),activeRow=0;
+const norm=s=>s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
+
+function build(){
+  const g=document.getElementById("grid");g.innerHTML="";inputs=[];
+  DATA.forEach((d,r)=>{
+    const tr=document.createElement("tr");
+    const n=document.createElement("td");n.className="num";n.textContent=(r+1)+".";n.onclick=()=>focusRow(r);tr.appendChild(n);
+    const off=COL-d.t;inputs[r]=[];
+    for(let c=0;c<WIDTH;c++){
+      const td=document.createElement("td");
+      const i=c-off;
+      if(i>=0&&i<d.w.length){
+        td.className="cell"+(i===d.t?" taj":"");
+        const inp=document.createElement("input");inp.maxLength=1;inp.dataset.r=r;inp.dataset.i=i;
+        inp.addEventListener("focus",()=>setActive(r));
+        inp.addEventListener("input",e=>{inp.value=norm(inp.value).slice(-1);td.classList.remove("ok","bad");if(inp.value)move(r,i,1);});
+        inp.addEventListener("keydown",e=>{
+          if(e.key==="Backspace"&&!inp.value){move(r,i,-1);e.preventDefault();}
+          else if(e.key==="ArrowRight")move(r,i,1);
+          else if(e.key==="ArrowLeft")move(r,i,-1);
+          else if(e.key==="ArrowDown"&&r<DATA.length-1)focusRow(r+1);
+          else if(e.key==="ArrowUp"&&r>0)focusRow(r-1);
+        });
+        td.appendChild(inp);inputs[r][i]=inp;
+      }
+      tr.appendChild(td);
+    }
+    g.appendChild(tr);
+  });
+  const cl=document.getElementById("clues");cl.innerHTML="";
+  DATA.forEach((d,r)=>{
+    const div=document.createElement("div");div.className="clue";div.id="clue"+r;
+    div.innerHTML=`<b>${r+1}.</b> ${d.c} <span style="color:#888">(${d.w.length})</span>
+      <div class="row2"><button class="hbtn" id="hb${r}">💡 Nápověda (${MAXH})</button><span class="hmsg" id="hm${r}"></span></div>`;
+    div.onclick=e=>{if(e.target.tagName!=="BUTTON")focusRow(r);};
+    cl.appendChild(div);
+    document.getElementById("hb"+r).onclick=e=>{e.stopPropagation();hint(r);};
+  });
+  setActive(0);
+}
+function move(r,i,dir){const j=i+dir;if(inputs[r][j]){inputs[r][j].focus();inputs[r][j].select();}}
+function focusRow(r){const f=inputs[r].find(x=>!x.value)||inputs[r][0];f.focus();}
+function setActive(r){
+  activeRow=r;
+  document.querySelectorAll("td.cell").forEach(td=>td.classList.remove("active"));
+  inputs[r].forEach(x=>x.parentElement.classList.add("active"));
+  document.querySelectorAll(".clue").forEach(c=>c.classList.remove("active"));
+  document.getElementById("clue"+r).classList.add("active");
+}
+function hint(r){
+  const msg=document.getElementById("hm"+r),btn=document.getElementById("hb"+r);
+  if(hints[r]>=MAXH){msg.textContent="Limit nápovědy je vyčerpán";return;}
+  const w=DATA[r].w;
+  const idx=inputs[r].findIndex((x,i)=>x.value!==w[i]);
+  if(idx<0){msg.textContent="Slovo je už správně vyplněné.";return;}
+  inputs[r][idx].value=w[idx];inputs[r][idx].parentElement.classList.add("hinted");
+  inputs[r][idx].parentElement.classList.remove("bad");
+  hints[r]++;
+  const left=MAXH-hints[r];
+  btn.textContent=`💡 Nápověda (${left})`;
+  if(left===0){btn.disabled=true;msg.textContent="Limit nápovědy je vyčerpán";}
+}
+function check(){
+  let solved=0;
+  DATA.forEach((d,r)=>{
+    let ok=true;
+    inputs[r].forEach((x,i)=>{
+      const td=x.parentElement;td.classList.remove("ok","bad");
+      if(!x.value){ok=false;return;}
+      if(x.value===d.w[i])td.classList.add("ok");else{td.classList.add("bad");ok=false;}
+    });
+    document.getElementById("clue"+r).classList.toggle("solved",ok);
+    if(ok)solved++;
+  });
+  const tajOk=norm(document.getElementById("tajIn").value.trim())===TAJENKA;
+  const used=hints.reduce((a,b)=>a+b,0);
+  const res=document.getElementById("result");
+  if(solved===DATA.length&&tajOk){res.style.color="#2e7d32";res.textContent=`🎉 Výborně! Vše správně včetně tajenky. Použité nápovědy: ${used}`;}
+  else{res.style.color="#c00";res.textContent=`Správně vyřešeno ${solved} z ${DATA.length} slov. Tajenka: ${tajOk?"✔ správně":"✘ zatím ne"}. Použité nápovědy: ${used}`;}
+}
+function resetAll(){hints=DATA.map(()=>0);document.getElementById("tajIn").value="";document.getElementById("result").textContent="";build();}
+build();
+</script>
+</body>
+</html>
