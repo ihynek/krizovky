@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Roztřiď protista</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦠</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#f3eee4; --card:#fffdf8; --ink:#2b2a33; --muted:#76705f; --line:#ddd2bd;
+    --accent:#1f4e79; --accent-soft:#e1ecf6; --chip:#efe3c8; --chip-line:#c9b68f;
+    --ok:#2f7d5b; --ok-soft:#dcefe4; --bad:#b3412e; --bad-soft:#f6ddd7;
+    --display:"Literata",Georgia,serif; --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:var(--body);line-height:1.5}
+  main{max-width:1120px;margin:0 auto;padding-block:28px 48px;padding-inline:16px}
+  h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,5vw,44px);line-height:1.05;margin:0 0 6px;text-wrap:balance}
+  .sub{margin:0 0 18px;color:var(--muted);max-width:68ch}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 8px 24px -18px rgba(60,50,30,.45)}
+  .chip{font:inherit;font-weight:700;font-size:15px;background:var(--chip);color:var(--ink);border:1.5px solid var(--chip-line);
+    border-radius:999px;padding:7px 14px;cursor:pointer;touch-action:manipulation;user-select:none}
+  .chip:hover{border-color:var(--accent)}
+  .chip.sel{background:var(--accent);border-color:var(--accent);color:#fff}
+  .chip.ok{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+  .chip.bad{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+  .pool{display:flex;flex-wrap:wrap;gap:8px;min-height:44px}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  button.btn{font:inherit;font-weight:700;border-radius:999px;padding:9px 18px;cursor:pointer;border:1.5px solid var(--ink);background:var(--ink);color:#fff}
+  button.btn.ghost{background:transparent;color:var(--ink)}
+  button.btn.acc{background:var(--accent);border-color:var(--accent)}
+  button:focus-visible,.chip:focus-visible{outline:3px solid #f2c14e;outline-offset:2px}
+  .status{min-height:1.5em;margin:12px 0 0;font-weight:700}
+  .status.win{color:var(--ok)} .status.warn{color:var(--bad)}
+  .label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 8px}
+  footer{margin-top:28px;color:var(--muted);font-size:.85em;text-align:center}
+  @media (prefers-reduced-motion:no-preference){.chip{transition:background .15s,border-color .15s}}
+
+  /* rozvržení: zásobník nahoře, koše vedle sebe (na mobilu pod sebou) */
+  .top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:10px}
+  .round{font-family:var(--display);font-size:clamp(20px,3.4vw,26px);margin:0}
+  .prog{display:flex;gap:6px}
+  .dot{width:12px;height:12px;border-radius:50%;background:var(--line)}
+  .dot.cur{background:var(--accent)} .dot.done{background:var(--ok)}
+  .bins{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:16px}
+  @media (max-width:640px){.bins{grid-template-columns:1fr}}
+  .bin{border:2px dashed var(--chip-line);border-radius:16px;padding:12px;min-height:150px;cursor:pointer;background:#fff;min-width:0}
+  .bin.armed{border-color:var(--accent);background:var(--accent-soft)}
+  .bin.hot{border-style:solid;border-color:var(--accent)}
+  .bin h3{margin:0 0 10px;font-size:15px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent)}
+  .bin .pool{min-height:60px}
+  .summary{display:none} .summary.show{display:block}
+  table{border-collapse:collapse;margin-top:10px} td,th{padding:6px 14px 6px 0;text-align:left} td.num{font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<main>
+  <h1>Roztřiď protista</h1>
+  <p class="sub">Klepni na pojem a pak na koš, kam patří (na počítači můžeš pojem i přetáhnout). Pojem z koše vrátíš klepnutím. Do dalšího kola postoupíš, až budou všechny pojmy správně.</p>
+  <section class="card" id="game">
+    <div class="top"><h2 class="round" id="round"></h2><div class="prog" id="prog"></div></div>
+    <p class="label">Pojmy</p>
+    <div class="pool" id="pool"></div>
+    <div class="bins" id="bins"></div>
+    <div class="controls">
+      <button class="btn" id="check">Zkontrolovat</button>
+      <button class="btn acc" id="next" hidden>Další kolo</button>
+    </div>
+    <p class="status" id="status" aria-live="polite"></p>
+  </section>
+  <section class="card summary" id="summary">
+    <h2 class="round" id="donehead">Hotovo, všech šest kol je správně</h2>
+    <p class="sub" style="margin-top:6px">Počet chybně zařazených pojmů při kontrolách:</p>
+    <table id="tbl"></table>
+    <div class="controls"><button class="btn ghost" id="again">Hrát znovu</button></div>
+  </section>
+  <footer>Biologie · Protista – hlavní skupiny · Gymnázium Joachima Barranda Beroun</footer>
+</main>
+<script>
+const R = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob("W3sidCI6ICJEbyBrdGVyw6kgc2t1cGlueSBTQVIgcGF0xZnDrT8iLCAiYmlucyI6IFsiU3RyYW1lbm9waWxhIiwgIkFsdmVvbGF0YSIsICJSaGl6YXJpYSJdLCAiaXRlbXMiOiBbWyLEjWx1bm92a2EiLCAwXSwgWyJjaGFsdWhhIGJ1YmxpbmF0w6EiLCAwXSwgWyJwbMOtc2XFiCBicmFtYm9yb3bDoSIsIDBdLCBbInBsw61zZcWIIHLDqXZvdsOhIiwgMF0sIFsidHJlcGthIHZlbGvDoSIsIDFdLCBbInppbW5pxI1rYSB0cm9waWNrw6EiLCAxXSwgWyJvYnJuxJtua2EgQ2VyYXRpdW0iLCAxXSwgWyJ0b3hvcGxhem1hIiwgMV0sIFsiR2xvYmlnZXJpbmEiLCAyXSwgWyJtxZnDrcW+b3ZjaSIsIDJdLCBbIm7DoWRvcm92a2Ega2FwdXN0b3bDoSIsIDJdLCBbIlBhdWxpbmVsbGEiLCAyXV19LCB7InQiOiAiQW1vcnBoZWEsIERpc2NvYmEsIG5lYm8gTWV0YW1vbmFkYT8iLCAiYmlucyI6IFsiQW1vZWJvem9hIiwgIk9waXN0aG9rb250YSIsICJEaXNjb2JhIiwgIk1ldGFtb25hZGEiXSwgIml0ZW1zIjogW1sibcSbxYhhdmthIHZlbGvDoSIsIDBdLCBbIm3Em8WIYXZrYSDDunBsYXZpxI1uw6EiLCAwXSwgWyJobGVua2EgUGh5c2FydW0iLCAwXSwgWyJrcnl0ZW5reSIsIDBdLCBbInRydWLDqW5rYSBTYWxwaW5nb2VjYSIsIDFdLCBbIkljaHRoeW9waG9udXMiLCAxXSwgWyJOdWNsZWFyaWEiLCAxXSwgWyJrcsOhc25vb8SNa28gemVsZW7DqSIsIDJdLCBbInRyeXBhbm96b21hIHNwYXZpxI1uw6EiLCAyXSwgWyJOYWVnbGVyaWEgZm93bGVyaSIsIDJdLCBbImxlaXNobWFuaWUiLCAyXSwgWyJsYW1ibGllIHN0xZlldm7DrSIsIDNdLCBbImJpxI1lbmthIHBvxaFldm7DrSIsIDNdLCBbInRyaWNob255bWZhIiwgM11dfSwgeyJ0IjogIkFyY2hhZXBsYXN0aWRhLCBuZWJvIEhhcHRpc3RhIGEgQ3J5cHRpc3RhPyIsICJiaW5zIjogWyJnbGF1a29meXR5IiwgInJ1ZHVjaHkiLCAiemVsZW7DqSDFmWFzeSIsICJIYXB0aXN0YSAvIENyeXB0aXN0YSJdLCAiaXRlbXMiOiBbWyJDeWFub3Bob3JhIiwgMF0sIFsiUG9ycGh5cmEgKG5vcmkpIiwgMV0sIFsixb5hYsOtIHPDrW3EmyIsIDFdLCBbInBsw6HFoXTEm25rYSIsIDJdLCBbImNobG9yZWxhIiwgMl0sIFsiRW1pbGlhbmlhIGh1eGxleWkiLCAzXSwgWyJQcnltbmVzaXVtIHBhcnZ1bSIsIDNdLCBbIkNyeXB0b21vbmFzIiwgM11dfSwgeyJ0IjogIktlIGt0ZXLDqSBza3VwaW7EmyBwYXTFmcOtIHRlbnRvIHpuYWs/IiwgImJpbnMiOiBbIlN0cmFtZW5vcGlsYSIsICJBbHZlb2xhdGEiLCAiRGlzY29iYSIsICJNZXRhbW9uYWRhIl0sICJpdGVtcyI6IFtbImZ1a294YW50aW4iLCAwXSwgWyJmcnVzdHVsYSIsIDBdLCBbInDDqcWZaXTDvSBwxZllZG7DrSBiacSNw61rIiwgMF0sIFsiYWx2ZW9seSIsIDFdLCBbImFwaWvDoWxuw60ga29tcGxleCIsIDFdLCBbIm1ha3JvbnVrbGV1cyBhIG1pa3JvbnVrbGV1cyIsIDFdLCBbImtpbmV0b3BsYXN0IiwgMl0sIFsicGFyYW15bG9uIiwgMl0sIFsiZGlza292aXTDqSBrcmlzdHkiLCAyXSwgWyJoeWRyb2dlbm96b215IiwgM10sIFsiYXhvc3R5bCIsIDNdLCBbInDFmcOtc2F2bsO9IGRpc2siLCAzXV19LCB7InQiOiAiSmFrw70gbWFqw60gcGxhc3RpZD8iLCAiYmlucyI6IFsicHJpbcOhcm7DrSAoMiBtZW1icsOhbnkpIiwgInNla3VuZMOhcm7DrSAoM+KAkzQgbWVtYnLDoW55KSIsICJiZXogcGxhc3RpZHUiXSwgIml0ZW1zIjogW1sicnVkdWNoeSIsIDBdLCBbInplbGVuw6kgxZlhc3kiLCAwXSwgWyJnbGF1a29meXR5IiwgMF0sIFsicm96c2l2a3kiLCAxXSwgWyJjaGFsdWh5IiwgMV0sIFsia3LDoXNub2/EjWtvIiwgMV0sIFsia3J5cHRvbW9uw6FkeSIsIDFdLCBbImtva29saXRreSIsIDFdLCBbInRyZXBrYSIsIDJdLCBbImxhbWJsaWUiLCAyXSwgWyJtxJvFiGF2a2EgdmVsa8OhIiwgMl0sIFsidHJ5cGFub3pvbWEiLCAyXV19LCB7InQiOiAiVm9sbsSbIMW+aWrDrWPDrSwgcGFyYXppdCwgbmVibyBzeW1iaW9udD8iLCAiYmlucyI6IFsidm9sbsSbIMW+aWrDrWPDrSIsICJwYXJheml0IiwgInN5bWJpb250Il0sICJpdGVtcyI6IFtbInRyZXBrYSB2ZWxrw6EiLCAwXSwgWyJtxJvFiGF2a2EgdmVsa8OhIiwgMF0sIFsixI1sdW5vdmthIiwgMF0sIFsicGzDocWhdMSbbmthIiwgMF0sIFsiR2xvYmlnZXJpbmEiLCAwXSwgWyJ6aW1uacSNa2EgdHJvcGlja8OhIiwgMV0sIFsibcSbxYhhdmthIMO6cGxhdmnEjW7DoSIsIDFdLCBbImxhbWJsaWUgc3TFmWV2bsOtIiwgMV0sIFsidHJ5cGFub3pvbWEgc3BhdmnEjW7DoSIsIDFdLCBbIm7DoWRvcm92a2Ega2FwdXN0b3bDoSIsIDFdLCBbInBsw61zZcWIIGJyYW1ib3JvdsOhIiwgMV0sIFsiem9veGFudGVseSB2IGtvcsOhbGVjaCIsIDJdLCBbInRyaWNob255bWZhIiwgMl0sIFsiYmFjaG9yY2kiLCAyXV19XQ=="), c => c.charCodeAt(0))));
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const $ = id => document.getElementById(id);
+let r, where, sel, errors, solved;
+function start() { r = 0; errors = R.map(() => 0); $("summary").classList.remove("show"); $("game").hidden = false; load(); }
+function load() {
+  where = R[r].items.map(() => -1); sel = null; solved = false;
+  order = shuffle(R[r].items.map((_, i) => i));
+  status(""); render();
+}
+let order = [];
+const status = (t, c = "") => { $("status").className = "status " + c; $("status").textContent = t; };
+function chip(i) {
+  const b = document.createElement("button"); b.type = "button"; b.draggable = !solved;
+  b.className = "chip" + (sel === i ? " sel" : ""); b.textContent = R[r].items[i][0]; b.id = "c" + i;
+  b.addEventListener("dragstart", e => { e.dataTransfer.setData("text/plain", String(i)); });
+  b.addEventListener("click", e => {
+    e.stopPropagation(); if (solved) return;
+    if (where[i] >= 0) { where[i] = -1; sel = null; } else sel = sel === i ? null : i;
+    status(""); render();
+  });
+  return b;
+}
+function put(i, b) { if (solved) return; where[i] = b; sel = null; status(""); render(); }
+function render() {
+  const q = R[r];
+  $("round").textContent = q.t;
+  $("prog").innerHTML = R.map((_, i) => `<span class="dot ${i < r ? "done" : i === r ? "cur" : ""}"></span>`).join("");
+  const pool = $("pool"); pool.innerHTML = "";
+  order.filter(i => where[i] < 0).forEach(i => pool.appendChild(chip(i)));
+  if (!pool.children.length) pool.innerHTML = '<span style="color:var(--muted)">Všechny pojmy jsou v koších.</span>';
+  const bins = $("bins"); bins.innerHTML = "";
+  q.bins.forEach((name, b) => {
+    const d = document.createElement("div"); d.className = "bin" + (sel !== null ? " armed" : ""); d.tabIndex = 0;
+    d.innerHTML = `<h3>${name}</h3>`; const p = document.createElement("div"); p.className = "pool";
+    order.filter(i => where[i] === b).forEach(i => p.appendChild(chip(i)));
+    d.appendChild(p);
+    d.addEventListener("click", () => { if (sel !== null) put(sel, b); else status("Nejdřív vyber pojem nahoře."); });
+    d.addEventListener("keydown", e => { if ((e.key === "Enter" || e.key === " ") && sel !== null) { e.preventDefault(); put(sel, b); } });
+    d.addEventListener("dragover", e => { e.preventDefault(); d.classList.add("hot"); });
+    d.addEventListener("dragleave", () => d.classList.remove("hot"));
+    d.addEventListener("drop", e => { e.preventDefault(); put(+e.dataTransfer.getData("text/plain"), b); });
+    bins.appendChild(d);
+  });
+  $("next").hidden = !solved; $("check").hidden = solved;
+}
+$("check").addEventListener("click", () => {
+  const q = R[r]; let bad = 0, empty = 0;
+  q.items.forEach(([, b], i) => { if (where[i] < 0) empty++; else if (where[i] !== b) bad++; });
+  if (empty) { status(`Ještě zbývá zařadit: ${empty}.`, "warn"); return; }
+  errors[r] += bad;
+  if (!bad) {
+    solved = true; render();
+    q.items.forEach((_, i) => $("c" + i).classList.add("ok"));
+    status(r === R.length - 1 ? "Správně! To bylo poslední kolo." : "Všechno správně! Pokračuj dalším kolem.", "win");
+    if (r === R.length - 1) $("next").textContent = "Zobrazit výsledek";
+  } else {
+    q.items.forEach(([, b], i) => { if (where[i] !== b) $("c" + i).classList.add("bad"); });
+    status(`Chybně zařazeno: ${bad} (červeně). Klepnutím je vrátíš a zkus znovu.`, "warn");
+  }
+});
+$("next").addEventListener("click", () => {
+  if (r < R.length - 1) { r++; $("next").textContent = "Další kolo"; load(); return; }
+  $("game").hidden = true; $("summary").classList.add("show");
+  $("tbl").innerHTML = R.map((q, i) => `<tr><td>${i + 1}. ${q.bins.join(" × ")}</td><td class="num">${errors[i]}</td></tr>`).join("") +
+    `<tr><th>Celkem</th><th class="num">${errors.reduce((a, b) => a + b, 0)}</th></tr>`;
+  $("next").textContent = "Další kolo";
+});
+$("again").addEventListener("click", start);
+start();
+</script>
+</body>
+</html>
