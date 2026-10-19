@@ -92,6 +92,20 @@
     .cell{border-width:1px;border-radius:3px}
   }
   footer{margin-top:28px;color:var(--muted);font-size:.85em;text-align:center}
+
+  /* režim tabule: celá křížovka na jedné obrazovce, stránka se neposouvá (kreslení přes promítnutou křížovku nesjede) */
+  .boardbtn{background:transparent;color:var(--stain,#1f4e79);border-color:var(--stain,#1f4e79)}
+  body.board{height:100vh;overflow:hidden}
+  body.board main{max-width:none;height:100vh;padding:10px 16px;display:flex;flex-direction:column}
+  body.board header, body.board footer{display:none}
+  body.board .layout{flex:1;min-height:0;grid-template-columns:auto minmax(260px,1fr);gap:16px}
+  body.board .slide{overflow:visible;padding:10px 12px}
+  body.board .clues{height:100%;min-height:0;overflow-y:auto;padding-right:6px}
+  body.board .clues li{padding:4px 8px}
+  body.board .tajenka{margin-top:6px}
+  body.board .controls{margin-top:8px}
+  body.board .status{margin-top:6px;min-height:1.2em}
+  body.board .reveal.show{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:5;box-shadow:0 10px 30px -10px rgba(0,0,0,.4);animation:none}
 </style>
 </head>
 <body>
@@ -112,6 +126,7 @@
         <button id="check">Zkontrolovat</button>
         <button id="hint" class="hint">Nápověda</button>
         <button id="clear" class="ghost">Vymazat</button>
+        <button id="board" class="ghost boardbtn" type="button">Režim tabule</button>
       </div>
       <p class="status" id="status" aria-live="polite"></p>
     </section>
@@ -317,6 +332,25 @@ document.getElementById("clear").addEventListener("click", () => {
   status.textContent = "Mřížka je prázdná. Vyčerpané nápovědy se nevrací.";
   cells[0].focus();
 });
+
+/* režim tabule */
+const boardBtn = document.getElementById("board");
+function fitBoard() {
+  const root = document.documentElement;
+  if (!document.body.classList.contains("board")) { root.style.removeProperty("--cell"); return; }
+  const byH = (window.innerHeight - 175) / rows.length - 5;
+  const byW = (window.innerWidth * 0.6) / (WIDTH + 1.4);
+  root.style.setProperty("--cell", Math.max(16, Math.min(byH, byW, 64)) + "px");
+}
+function setBoard(on) {
+  document.body.classList.toggle("board", on);
+  boardBtn.textContent = on ? "Běžné zobrazení" : "Režim tabule";
+  window.scrollTo(0, 0);
+  fitBoard();
+}
+boardBtn.addEventListener("click", () => setBoard(!document.body.classList.contains("board")));
+window.addEventListener("resize", fitBoard);
+if (location.hash === "#tabule") setBoard(true);
 
 setActive(0);
 liveCheck();
