@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Přiřaď – krev</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🩸</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#f3eee4; --card:#fffdf8; --ink:#2b2a33; --muted:#76705f; --line:#ddd2bd;
+    --accent:#1f4e79; --accent-soft:#e1ecf6; --chip:#efe3c8; --chip-line:#c9b68f;
+    --ok:#2f7d5b; --ok-soft:#dcefe4; --bad:#b3412e; --bad-soft:#f6ddd7;
+    --display:"Literata",Georgia,serif; --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:var(--body);line-height:1.5}
+  main{max-width:1120px;margin:0 auto;padding-block:28px 48px;padding-inline:16px}
+  h1{font-family:var(--display);font-weight:700;font-size:clamp(28px,5vw,44px);line-height:1.05;margin:0 0 6px;text-wrap:balance}
+  .sub{margin:0 0 18px;color:var(--muted);max-width:68ch}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;box-shadow:0 8px 24px -18px rgba(60,50,30,.45)}
+  .controls{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+  button.btn{font:inherit;font-weight:700;border-radius:999px;padding:9px 18px;cursor:pointer;border:1.5px solid var(--ink);background:var(--ink);color:#fff}
+  button.btn.ghost{background:transparent;color:var(--ink)}
+  button.btn.acc{background:var(--accent);border-color:var(--accent)}
+  button:focus-visible{outline:3px solid #f2c14e;outline-offset:2px}
+  .status{min-height:1.5em;margin:12px 0 0;font-weight:700}
+  .status.win{color:var(--ok)} .status.warn{color:var(--bad)}
+  .label{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700;margin:0 0 8px}
+  footer{margin-top:28px;color:var(--muted);font-size:.85em;text-align:center}
+  .top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:12px}
+  .round{font-family:var(--display);font-size:clamp(20px,3.4vw,26px);margin:0}
+  .prog{display:flex;gap:6px}
+  .dot{width:12px;height:12px;border-radius:50%;background:var(--line)}
+  .dot.cur{background:var(--accent)} .dot.done{background:var(--ok)}
+
+  /* rozvržení: pojmy vlevo, popisy vpravo; páry mají stejné číslo */
+  .cols{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);gap:18px}
+  @media (max-width:640px){.cols{grid-template-columns:1fr}}
+  .list{display:flex;flex-direction:column;gap:8px;min-width:0}
+  .item{font:inherit;text-align:left;display:flex;align-items:center;gap:10px;width:100%;min-height:48px;
+    background:#fff;color:var(--ink);border:1.5px solid var(--chip-line);border-radius:12px;padding:8px 12px;cursor:pointer;touch-action:manipulation}
+  .item.term{font-weight:700;background:var(--chip)}
+  .item:hover{border-color:var(--accent)}
+  .item.sel{border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent) inset}
+  .item.ok{border-color:var(--ok);background:var(--ok-soft);cursor:default}
+  .item.bad{border-color:var(--bad);background:var(--bad-soft)}
+  .badge{flex:none;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:14px;font-weight:700;
+    border:1.5px dashed var(--chip-line);color:var(--muted);font-variant-numeric:tabular-nums}
+  .badge.on{border-style:solid;color:#fff}
+  .item .txt{min-width:0}
+  .summary{display:none} .summary.show{display:block}
+  table{border-collapse:collapse;margin-top:10px} td,th{padding:6px 14px 6px 0;text-align:left} td.num,th.num{font-variant-numeric:tabular-nums}
+  @media (prefers-reduced-motion:no-preference){.item{transition:background .15s,border-color .15s}}
+</style>
+</head>
+<body>
+<main>
+  <h1>Přiřaď – krev</h1>
+  <p class="sub">Klepni na pojem vlevo a pak na popis vpravo, který k němu patří. Spojená dvojice dostane stejné číslo. Dvojici zrušíš dalším klepnutím na kteroukoli její část. Do dalšího kola postoupíš, až budou všechny dvojice správně.</p>
+  <section class="card" id="game">
+    <div class="top"><h2 class="round" id="round"></h2><div class="prog" id="prog"></div></div>
+    <div class="cols">
+      <div><p class="label">Pojmy</p><div class="list" id="left"></div></div>
+      <div><p class="label">Popisy</p><div class="list" id="right"></div></div>
+    </div>
+    <div class="controls">
+      <button class="btn" id="check" type="button">Zkontrolovat</button>
+      <button class="btn acc" id="next" type="button" hidden>Další kolo</button>
+    </div>
+    <p class="status" id="status" aria-live="polite"></p>
+  </section>
+  <section class="card summary" id="summary">
+    <h2 class="round">Hotovo, všech pět kol je správně</h2>
+    <p class="sub" style="margin-top:6px">Počet chybných dvojic při kontrolách:</p>
+    <table id="tbl"></table>
+    <div class="controls"><button class="btn ghost" id="again" type="button">Hrát znovu</button></div>
+  </section>
+  <footer>Biologie · Oběhová soustava 1 · kap. 145, 146, 150 · Gymnázium Joachima Barranda Beroun</footer>
+</main>
+<script>
+const R = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob("W3sidCI6ICJTbG/Fvmt5IGtydmUiLCAicGFpcnMiOiBbWyJrcmV2bsOtIHBsYXptYSIsICJuYcW+bG91dGzDoSB2YXprw6EgdGVrdXRpbmEsIHogOTEgJSB2b2RhIl0sIFsiYnVmZnkgY29hdCIsICJhc2kgMSUgdnJzdHZhIGLDrWzDvWNoIGtydmluZWsgYSBrcmV2bsOtY2ggZGVzdGnEjWVrIl0sIFsiaGVtYXRva3JpdCIsICJwcm9jZW50dcOhbG7DrSBvYmplbSDEjWVydmVuw71jaCBrcnZpbmVrLCB0eXBpY2t5IDQyICUiXSwgWyJrcmV2bsOtIHPDqXJ1bSIsICJwbGF6bWEgYmV6IGLDrWxrb3ZpbiB6b2Rwb3bEm2Ruw71jaCB6YSBzcsOhxb5lbsOtIl0sIFsia3Jldm7DrSB0xJtsw61za2EgKGVsZW1lbnR5KSIsICJzb3Vocm5uw70gbsOhemV2IGVyeXRyb2N5dMWvLCBsZXVrb2N5dMWvIGEgdHJvbWJvY3l0xa8iXSwgWyJzZWRpbWVudGFjZSIsICJyeWNobG9zdCB1c2F6b3bDoW7DrSDEjWVydmVuw71jaCBrcnZpbmVrLCBhc2kgNSBtbS9oIl0sIFsiQ1JQIiwgInrDoW7Em3RsaXbDvSBwcm90ZWluLCBqZWhvxb4gc3Rhbm92ZW7DrSBkbmVzIG5haHJhenVqZSBzZWRpbWVudGFjaSJdXX0sIHsidCI6ICJMw6F0a3kgdiBrcnZpIiwgInBhaXJzIjogW1siYWxidW1pbnkiLCAidsOhxb5vdSB2b2R1LCBiaWxpcnViaW4sIGhvcm1vbnkgYSBtYXN0bsOpIGt5c2VsaW55Il0sIFsiZ2xvYnVsaW55IiwgInBsYXptYXRpY2vDqSBiw61sa292aW55LCBtZXppIGt0ZXLDqSBwYXTFmcOtIHByb3RpbMOhdGt5Il0sIFsidHJhbnNmZXJpbiIsICJiw61sa292aW5hLCBrdGVyw6EgdiBrcnZpIHDFmWVuw6HFocOtIMW+ZWxlem8iXSwgWyJmZXJyaXRpbiIsICJiw61sa292aW5hLCBuYSBrdGVyb3Ugc2UgdsOhxb5lIMW+ZWxlem8geiByb3psb8W+ZW7DvWNoIGtydmluZWsiXSwgWyJiaWxpcnViaW4iLCAixb5sdXRvb3JhbsW+b3bDqSBiYXJ2aXZvIHogcm96a2xhZHUgaGVtdSJdLCBbIkhDT+KCg+KBuyIsICJobGF2bsOtIGZvcm1hLCB2ZSBrdGVyw6kga3JldiBwxZllbsOhxaHDrSBDT+KCgiAoNzAgJSkiXSwgWyJnbHVrw7N6YSIsICJ2IGtydmkgbmFsYcSNbm8gYXNpIDUsNSBtbW9sL2wiXV19LCB7InQiOiAixIxlcnZlbsOhIGtydmlua2EgdiDEjcOtc2xlY2giLCAicGFpcnMiOiBbWyI3LDUgwrVtIiwgInByxa9txJtyIMSNZXJ2ZW7DqSBrcnZpbmt5Il0sIFsiMiw1IMK1bSIsICJ0bG91xaHFpWthIMSNZXJ2ZW7DqSBrcnZpbmt5Il0sIFsiMTIwIGRuw60iLCAiZMOpbGthIMW+aXZvdGEgxI1lcnZlbsOpIGtydmlua3kiXSwgWyI1IDAwMCAwMDAiLCAicMWZaWJsacW+bsO9IHBvxI1ldCBlcnl0cm9jeXTFryB2IDEgwrVsIGtydmUiXSwgWyI4NSAlIiwgInBvZMOtbCBlcnl0cm9jeXTFryBuYSB2xaFlY2ggYnXFiGvDoWNoIHTEm2xhIl0sIFsiMjY1IG1pbGlvbsWvIiwgInBvxI1ldCBtb2xla3VsIGhlbW9nbG9iaW51IHYgamVkbsOpIGtydmluY2UiXSwgWyIzMCAlIiwgIm8ga29saWsgamUgcG92cmNoIGtydmlua3kgdsSbdMWhw60gbmXFviB1IGtvdWxlIHN0ZWpuw6lobyBvYmplbXUiXV19LCB7InQiOiAiSGVtb2dsb2JpbiIsICJwYWlycyI6IFtbImhlbSIsICLEjcOhc3QgaGVtb2dsb2JpbnUgc2Ugxb5lbGV6bmF0w71tIGthdGlvbnRlbSBGZcKy4oG6Il0sIFsiZ2xvYmluIiwgImLDrWxrb3Zpbm7DoSDEjcOhc3Q7IHYgamVkbsOpIG1vbGVrdWxlIGhlbW9nbG9iaW51IGpzb3UgxI10ecWZaSJdLCBbIjQgbW9sZWt1bHkgT+KCgiIsICJrb2xpayBreXNsw61rdSBwxZllbmVzZSBqZWRuYSBtb2xla3VsYSBoZW1vZ2xvYmludSJdLCBbInBsb2RvdsO9IGhlbW9nbG9iaW4iLCAibcOhIHZ5xaHFocOtIGFmaW5pdHUga2Uga3lzbMOta3UsIE/igoIgcMWZZWNow6F6w60geiBrcnZlIG1hdGt5Il0sIFsibXlvZ2xvYmluIiwgInN2YWxvdsOpIGJhcnZpdm8gcyBqZWRuw61tIGhlbWVtLCBvZGViw61yw6Ega3lzbMOtayBoZW1vZ2xvYmludSJdLCBbInNhdHVyYcSNbsOtIGvFmWl2a2EiLCAiZXNvdml0w70gZ3JhZiBuYXN5Y2Vuw60gaGVtb2dsb2JpbnUga3lzbMOta2VtIl0sIFsibHVtaW5vbCIsICJtb2TFmWUgc3bEm3TDqWxrdWplIHYgcMWZw610b21ub3N0aSBoZW1vZ2xvYmludSBhIHBlcm94aWR1IHZvZMOta3UiXV19LCB7InQiOiAiS2R5xb4gaGVtb2dsb2JpbiBuZWZ1bmd1amUiLCAicGFpcnMiOiBbWyJrYXJib255bGhlbW9nbG9iaW4iLCAiaGVtb2dsb2JpbiBzIG5hdsOhemFuw71tIG94aWRlbSB1aGVsbmF0w71tIl0sIFsibWV0aGVtb2dsb2JpbiIsICJoZW1vZ2xvYmluIHNlIMW+ZWxlemVtIHpveGlkb3ZhbsO9bSBuYSBGZcKz4oG6Il0sIFsiYW7DqW1pZSIsICJ2IGtydmkgamUgbcOhbG8gxI1lcnZlbsO9Y2gga3J2aW5layBuZWJvIGhlbW9nbG9iaW51Il0sIFsia3lhbmlkeSIsICJibG9rdWrDrSBrb25jb3bDvSBkw71jaGFjw60gxZlldMSbemVjIHYgbWl0b2Nob25kcmnDrWNoIl0sIFsiaHlwZXJiYXJpY2vDoSBrb21vcmEiLCAibMOpxI1iYSBvdHJhdnkgQ08ga3lzbMOta2VtIHBvZCB0bGFrZW0gYcW+IDMgYXRtb3Nmw6lyeSJdLCBbInZpdGFtaW4gQyIsICJyZWR1a3VqZSBGZcKz4oG6IHpwxJt0IG5hIEZlwrLigboiXSwgWyJrd2FzaGlvcmtvciIsICJwb2R2w73Fvml2YSBzIG5lZG9zdGF0a2VtIGFsYnVtaW51IGEgb3Rva3kgYsWZaWNoYSJdXX1d"), c => c.charCodeAt(0))));
+const COLORS = ["#1f4e79","#8a3b6b","#2f7d5b","#b0641c","#5a4aa0","#a33a2f","#3f7f8f","#6b6a2a"];
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const $ = id => document.getElementById(id);
+let r, link, sel, errors, solved, lo, ro, checked;
+// link[i] = index popisu přiřazeného k pojmu i (-1 = nic); správně je link[i] === i
+function start(){ r = 0; errors = R.map(() => 0); $("summary").classList.remove("show"); $("game").hidden = false; load(); }
+function load(){
+  const n = R[r].pairs.length;
+  link = Array(n).fill(-1); sel = null; solved = false; checked = false;
+  lo = shuffle([...Array(n).keys()]); ro = shuffle([...Array(n).keys()]);
+  status(""); render();
+}
+const status = (t, c = "") => { $("status").className = "status " + c; $("status").textContent = t; };
+const pairNo = i => lo.indexOf(i) + 1; // číslo dvojice = pořadí pojmu vlevo
+function owner(j){ return link.indexOf(j); }
+function badge(num, col){ return `<span class="badge${num ? " on" : ""}" style="${num ? "background:" + col + ";border-color:" + col : ""}">${num || ""}</span>`; }
+function render(){
+  const q = R[r];
+  $("round").textContent = q.t;
+  $("prog").innerHTML = R.map((_, i) => `<span class="dot ${i < r ? "done" : i === r ? "cur" : ""}"></span>`).join("");
+  const L = $("left"), Rr = $("right"); L.innerHTML = ""; Rr.innerHTML = "";
+  lo.forEach(i => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "item term";
+    const paired = link[i] >= 0, col = COLORS[(pairNo(i) - 1) % COLORS.length];
+    if (sel === i) b.classList.add("sel");
+    if (checked && paired) b.classList.add(link[i] === i ? "ok" : "bad");
+    if (solved) b.classList.add("ok");
+    b.innerHTML = badge(paired ? pairNo(i) : 0, col) + `<span class="txt">${q.pairs[i][0]}</span>`;
+    b.addEventListener("click", () => {
+      if (solved) return;
+      if (link[i] >= 0){ link[i] = -1; sel = null; checked = false; status(""); render(); return; }
+      sel = i; status(""); render();
+    });
+    L.appendChild(b);
+  });
+  ro.forEach(j => {
+    const b = document.createElement("button"); b.type = "button"; b.className = "item";
+    const o = owner(j), col = o >= 0 ? COLORS[(pairNo(o) - 1) % COLORS.length] : "";
+    if (checked && o >= 0) b.classList.add(o === j ? "ok" : "bad");
+    if (solved) b.classList.add("ok");
+    b.innerHTML = badge(o >= 0 ? pairNo(o) : 0, col) + `<span class="txt">${q.pairs[j][1]}</span>`;
+    b.addEventListener("click", () => {
+      if (solved) return;
+      if (o >= 0){ link[o] = -1; sel = null; checked = false; status(""); render(); return; }
+      if (sel === null){ status("Nejdřív klepni na pojem vlevo."); return; }
+      link[sel] = j; sel = null; checked = false; status("");
+      render();
+    });
+    Rr.appendChild(b);
+  });
+  $("next").hidden = !solved; $("check").hidden = solved;
+}
+$("check").addEventListener("click", () => {
+  const empty = link.filter(x => x < 0).length;
+  if (empty){ status(`Ještě zbývá spojit: ${empty}.`, "warn"); return; }
+  const bad = link.filter((x, i) => x !== i).length;
+  errors[r] += bad;
+  if (!bad){
+    solved = true; render();
+    status(r === R.length - 1 ? "Správně! To bylo poslední kolo." : "Všechno správně! Pokračuj dalším kolem.", "win");
+    if (r === R.length - 1) $("next").textContent = "Zobrazit výsledek";
+  } else {
+    checked = true; sel = null; render();
+    status(`Chybné dvojice: ${bad} (červeně). Klepnutím je rozpojíš a zkus to znovu.`, "warn");
+  }
+});
+$("next").addEventListener("click", () => {
+  if (r < R.length - 1){ r++; $("next").textContent = "Další kolo"; load(); return; }
+  $("game").hidden = true; $("summary").classList.add("show");
+  $("tbl").innerHTML = R.map((q, i) => `<tr><td>${i + 1}. ${q.t}</td><td class="num">${errors[i]}</td></tr>`).join("") +
+    `<tr><th>Celkem</th><th class="num">${errors.reduce((a, b) => a + b, 0)}</th></tr>`;
+  $("next").textContent = "Další kolo";
+});
+$("again").addEventListener("click", start);
+start();
+</script>
+</body>
+</html>
