@@ -48,6 +48,8 @@
   .controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
   .controls button{font-size:clamp(16px,1.8vw,22px);padding:11px 24px}
   .controls .b0{background:var(--t0);border-color:var(--t0)} .controls .b1{background:var(--t1);border-color:var(--t1)} .controls .bg{background:var(--gray);border-color:var(--gray)}
+  .controls .b0.off{background:transparent;color:var(--t0)} .controls .b1.off{background:transparent;color:var(--t1)}
+  .team.out{opacity:.4}
   .controls .acc{background:var(--accent);border-color:var(--accent)}
   footer{text-align:center;color:var(--muted);font-size:.85em}
   .end{display:none;place-items:center;text-align:center}
@@ -63,7 +65,7 @@
     <div class="btns"><button class="ghost" id="rulesBtn" type="button">Pravidla</button><button class="ghost" id="newgame" type="button">Nová hra</button></div>
   </header>
   <div class="stage">
-    <div class="team t0"><h2>Oranžoví</h2><div class="cnt" id="s0">0</div><div class="lbl">bodů</div></div>
+    <div class="team t0" id="team0"><h2>Oranžoví</h2><div class="cnt" id="s0">0</div><div class="lbl">bodů</div></div>
     <section class="main" id="main">
       <div class="meta"><span id="round"></span><span class="pts" id="pts"></span></div>
       <ol class="clues" id="clues"></ol>
@@ -71,7 +73,7 @@
       <div class="controls" id="controls"></div>
     </section>
     <section class="main end" id="end"><div><p class="big" id="endtxt"></p><p class="meta" style="justify-content:center" id="endsub"></p><div class="controls" style="margin-top:18px"><button type="button" id="again">Hrát znovu</button></div></div></section>
-    <div class="team t1"><h2>Modří</h2><div class="cnt" id="s1">0</div><div class="lbl">bodů</div></div>
+    <div class="team t1" id="team1"><h2>Modří</h2><div class="cnt" id="s1">0</div><div class="lbl">bodů</div></div>
   </div>
   <footer>Biologie · Protista – hlavní skupiny · Gymnázium Joachima Barranda Beroun</footer>
 </div>
@@ -95,26 +97,31 @@ const R = [
 ];
 const TEAM = ["Oranžoví","Modří"], $ = id => document.getElementById(id);
 const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
-let order, k, shown, score, done;
+let order, k, shown, score, done, out, winner;
 function newGame() { order = shuffle(R.map((_, i) => i)); k = 0; score = [0, 0]; load(); }
-function load() { shown = 1; done = false; $("main").style.display = ""; $("end").classList.remove("show"); render(); }
+function load() { shown = 1; done = false; out = [false, false]; winner = null; $("main").style.display = ""; $("end").classList.remove("show"); render(); }
 const pts = () => 5 - shown;
+const word = n => n === 1 ? "bod" : n < 5 ? "body" : "bodů";
 function render() {
   const [name, grp, clues] = R[order[k]];
   $("round").textContent = `Hádanka ${k + 1} z ${order.length}`;
-  $("pts").textContent = done ? "" : `Teď za ${pts()} ${pts() === 1 ? "bod" : "body"}`;
+  $("pts").textContent = done ? "" : `Teď za ${pts()} ${word(pts())}`;
   $("clues").innerHTML = clues.map((c, i) => `<li class="clue ${i < shown ? "on" : ""}"><span class="no">${i + 1}</span><span class="txt">${c}</span></li>`).join("");
-  $("answer").innerHTML = done ? `${name}<span class="sub">${grp}</span>` : "";
-  $("s0").textContent = score[0]; $("s1").textContent = score[1];
+  $("answer").innerHTML = done ? `${name}<span class="sub">${grp}</span>` : (out[0] || out[1]) ? `<span class="sub" style="font-size:.4em">${out.map((o, i) => o ? TEAM[i] + " tipovali špatně – v této hádance už neodpovídají." : "").filter(Boolean).join(" ")}</span>` : "";
+  [0, 1].forEach(t => { $("s" + t).textContent = score[t]; $("team" + t).classList.toggle("out", out[t] && !done); });
   const c = $("controls");
   if (!done) {
-    c.innerHTML = `<button type="button" class="acc" id="more" ${shown >= 4 ? "disabled" : ""}>Další nápověda</button><button type="button" id="reveal">Ukázat řešení</button>`;
+    const tb = t => out[t] ? "" : `<button type="button" class="b${t}" id="ok${t}">✓ ${TEAM[t]}</button><button type="button" class="b${t} off" id="no${t}">✗ ${TEAM[t]}</button>`;
+    c.innerHTML = `${tb(0)}<button type="button" class="acc" id="more" ${shown >= 4 ? "disabled" : ""}>Další nápověda</button>${tb(1)}<button type="button" class="bg" id="nobody">Nikdo neví – řešení</button>`;
+    [0, 1].forEach(t => { if (out[t]) return;
+      $("ok" + t).onclick = () => { score[t] += pts(); winner = t; done = true; render(); };
+      $("no" + t).onclick = () => { out[t] = true; render(); }; });
     $("more").onclick = () => { if (shown < 4) { shown++; render(); } };
-    $("reveal").onclick = () => { done = true; render(); };
+    $("nobody").onclick = () => { winner = null; done = true; render(); };
   } else {
-    const p = pts();
-    c.innerHTML = `<button type="button" class="b0" id="g0">+${p} Oranžoví</button><button type="button" class="b1" id="g1">+${p} Modří</button><button type="button" class="bg" id="g2">Nikdo</button>`;
-    $("g0").onclick = () => award(0, p); $("g1").onclick = () => award(1, p); $("g2").onclick = () => award(null, 0);
+    const msg = winner === null ? "Nikdo neuhodl." : `${TEAM[winner]} získávají ${5 - shown} ${word(5 - shown)}.`;
+    c.innerHTML = `<span style="align-self:center;font-weight:700;font-size:clamp(16px,1.8vw,22px)">${msg}</span><button type="button" class="acc" id="next">${k + 1 < order.length ? "Další hádanka →" : "Výsledky"}</button>`;
+    $("next").onclick = () => award(null, 0);
   }
 }
 function award(t, p) {
@@ -129,7 +136,7 @@ function award(t, p) {
 }
 $("again").onclick = newGame;
 $("newgame").onclick = () => { if (confirm("Začít novou hru? Body se vynulují.")) newGame(); };
-$("rulesBtn").onclick = () => alert("Kdo jsem?\n\nNápovědy se odkrývají postupně od nejtěžší po nejlehčí.\nKdo uhodne organismus dřív, získá víc bodů: po 1. nápovědě 4 body, po 2. 3 body, po 3. 2 body, po 4. 1 bod.\nTýmy se mohou hlásit kdykoli, špatná odpověď = tým v této hádance už neodpovídá.");
+$("rulesBtn").onclick = () => alert("Kdo jsem?\n\nNápovědy se odkrývají postupně od nejtěžší po nejlehčí.\nKdo uhodne organismus dřív, získá víc bodů: po 1. nápovědě 4 body, po 2. 3 body, po 3. 2 body, po 4. 1 bod.\nTýmy se mohou hlásit kdykoli. Učitel tip vyhodnotí tlačítkem ✓ nebo ✗ – řešení se přitom neukáže.\nŠpatný tip (✗) = tým v této hádance už neodpovídá, druhý tým hraje dál.\nŘešení se ukáže až po správném tipu, nebo když nikdo neví.");
 newGame();
 </script>
 </body>
