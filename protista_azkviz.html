@@ -66,6 +66,12 @@
   .qbtns .bg{background:var(--gray);border-color:var(--gray)}
   .qbtns .ok{background:var(--ok);border-color:var(--ok)} .qbtns .bad{background:var(--bad);border-color:var(--bad)}
   .help{color:var(--muted);font-size:clamp(14px,1.4vw,18px);margin-top:16px}
+  .tbox{margin:0 auto 20px;max-width:640px}
+  .tnum{font-weight:700;font-size:clamp(24px,2.8vw,38px);font-variant-numeric:tabular-nums;color:var(--accent)}
+  .tnum.out{color:var(--bad)}
+  .timer{height:14px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:6px}
+  .timer i{display:block;height:100%;width:100%;background:var(--accent)}
+  .timer.low i{background:var(--bad)}
   .winbox .qtext{font-size:clamp(34px,5vw,72px)}
   @media (max-width:760px){.stage{grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr}.stage #wrap{grid-column:1/-1;grid-row:2}.team{padding:8px}}
 </style>
@@ -75,6 +81,7 @@
   <header>
     <h1>AZ-kvíz · Protista</h1>
     <div class="btns">
+      <button class="ghost" id="tset" type="button">⏱ 20 s</button>
       <button class="ghost" id="undo" type="button">↶ Zpět</button>
       <button class="ghost" id="rules" type="button">Pravidla</button>
       <button class="ghost" id="newgame" type="button">Nová hra</button>
@@ -208,18 +215,38 @@ function setOwner(i, o) {
   if (winner !== null) showWin();
 }
 
+const TOPTS = [20, 30, 0, 10]; let ti = 0, tInt = null;
+const TSEC = () => TOPTS[ti];
+const TBOX = () => TSEC() ? `<div class="tbox" id="tbox"><div class="tnum" id="tnum">${TSEC()} s</div><div class="timer" id="timer"><i id="tbar"></i></div></div>` : "";
+function beep() { try { const a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator(), g = a.createGain();
+  o.frequency.value = 660; o.connect(g); g.connect(a.destination); g.gain.setValueAtTime(.25, a.currentTime); g.gain.exponentialRampToValueAtTime(.001, a.currentTime + .6); o.start(); o.stop(a.currentTime + .6); } catch (e) {} }
+function startTimer() {
+  stopTimer(); if (!TSEC() || !$("tnum")) return;
+  const end = Date.now() + TSEC() * 1000;
+  tInt = setInterval(() => {
+    const left = Math.max(0, end - Date.now()), sec = Math.ceil(left / 1000);
+    if (!$("tnum")) return stopTimer();
+    $("tbar").style.width = (left / (TSEC() * 1000) * 100) + "%";
+    $("timer").classList.toggle("low", sec <= 5);
+    $("tnum").textContent = left ? sec + " s" : "Čas vypršel!";
+    $("tnum").classList.toggle("out", !left);
+    if (!left) { stopTimer(); beep(); }
+  }, 100);
+}
+function stopTimer() { if (tInt) { clearInterval(tInt); tInt = null; } }
 function card(cls, html) { const q = $("qcard"); q.className = "qcard " + cls; q.innerHTML = html; $("modal").classList.add("show"); }
-function closeModal() { $("modal").classList.remove("show"); }
+function closeModal() { stopTimer(); $("modal").classList.remove("show"); }
 
 function openCell(i) {
   if (winner !== null || owner[i] === 0 || owner[i] === 1) return;
   if (owner[i] === "g") return openYN(i);
   const [l, q, a] = Q[i];
   card("t" + turn, `<div class="qmeta">Políčko ${i + 1} · písmeno ${l} · odpovídají <b style="color:var(--t${turn})">${TEAM[turn]}</b></div>
-    <div class="qtext">${q}</div><div class="ans" id="ans">${a}</div>
+    <div class="qtext">${q}</div>${TBOX()}<div class="ans" id="ans">${a}</div>
     <div class="qbtns" id="qb"><button type="button" id="show">Ukázat odpověď</button><button type="button" class="ghost" id="cancel">Zavřít</button></div>`);
-  $("cancel").onclick = closeModal;
+  $("cancel").onclick = closeModal; startTimer();
   $("show").onclick = () => {
+    stopTimer(); if ($("tbox")) $("tbox").style.display = "none";
     $("ans").classList.add("show");
     $("qb").innerHTML = `<button type="button" class="b${turn}" id="r1">✓ ${TEAM[turn]}</button>
       <button type="button" class="b${1 - turn}" id="r2">✓ ${TEAM[1 - turn]}</button>
@@ -234,11 +261,12 @@ function openYN(i) {
   if (!ynDeck.length) ynDeck = shuffle(YN.map((_, k) => k));
   const [q, a] = YN[ynDeck.pop()];
   card("t" + turn, `<div class="qmeta">Šedé políčko ${i + 1} · otázka ANO/NE · odpovídají <b style="color:var(--t${turn})">${TEAM[turn]}</b></div>
-    <div class="qtext">${q}</div><div class="ans" id="ans">${a ? "ANO" : "NE"}</div>
+    <div class="qtext">${q}</div>${TBOX()}<div class="ans" id="ans">${a ? "ANO" : "NE"}</div>
     <div class="qbtns" id="qb"><button type="button" id="show">Ukázat odpověď</button><button type="button" class="ghost" id="cancel">Zavřít</button></div>
     <p class="help">Správná odpověď = políčko získá tým na tahu, špatná = získá ho soupeř.</p>`);
-  $("cancel").onclick = closeModal;
+  $("cancel").onclick = closeModal; startTimer();
   $("show").onclick = () => {
+    stopTimer(); if ($("tbox")) $("tbox").style.display = "none";
     $("ans").classList.add("show");
     $("qb").innerHTML = `<button type="button" class="ok" id="r1">Odpověděli správně</button><button type="button" class="bad" id="r2">Odpověděli špatně</button>`;
     $("r1").onclick = () => setOwner(i, turn);
@@ -253,6 +281,7 @@ function showWin() {
   $("look").onclick = closeModal; $("again").onclick = newGame;
 }
 
+$("tset").onclick = () => { ti = (ti + 1) % TOPTS.length; $("tset").textContent = TSEC() ? `⏱ ${TSEC()} s` : "⏱ vyp."; };
 $("undo").onclick = () => {
   const h = history.pop(); if (!h) return;
   owner[h.i] = h.prev; turn = h.turn; winner = null; closeModal(); render();
@@ -263,6 +292,7 @@ $("rules").onclick = () => card("", `<div class="qtext" style="font-size:clamp(2
   <p>Dva týmy se střídají. Tým na tahu vybere políčko a odpovídá – odpověď začíná písmenem na políčku.</p>
   <p>Když tým odpoví špatně, může odpovědět soupeř. Neví-li nikdo, políčko zešedne.</p>
   <p>O šedé políčko se hraje otázkou <b>ANO/NE</b>: správně = políčko vaše, špatně = soupeřovo.</p>
+  <p>Na odpověď je časový limit (tlačítko ⏱ v záhlaví: 20 s, 30 s, vypnuto, 10 s).</p>
   <p>Vyhrává tým, který jako první <b>propojí všechny tři strany</b> pyramidy.</p></div>
   <div class="qbtns" style="margin-top:16px"><button type="button" id="ok">Rozumím</button></div>`) || ($("ok").onclick = closeModal);
 $("modal").addEventListener("click", e => { if (e.target.id === "modal" && winner === null) closeModal(); });

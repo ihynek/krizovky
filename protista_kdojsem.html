@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kdo jsem? – Protista</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦠</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#f3eee4; --card:#fffdf8; --ink:#2b2a33; --muted:#76705f; --line:#ddd2bd;
+    --accent:#1f4e79; --accent-soft:#e1ecf6; --chip:#efe3c8; --chip-line:#c9b68f;
+    --ok:#2f7d5b; --ok-soft:#dcefe4; --bad:#b3412e;
+    --t0:#e0782b; --t0-soft:#fbe3cf; --t1:#2b6cb0; --t1-soft:#d8e6f6; --gray:#8b8a85;
+    --display:"Literata",Georgia,serif; --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:var(--body);line-height:1.4;overflow:hidden}
+  .app{height:100vh;height:100dvh;display:grid;grid-template-rows:auto 1fr auto;padding:12px 16px;gap:10px}
+  header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  h1{font-family:var(--display);font-size:clamp(22px,3.2vw,38px);margin:0;line-height:1.1}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-weight:700;border-radius:999px;padding:9px 18px;cursor:pointer;border:1.5px solid var(--ink);background:var(--ink);color:#fff;touch-action:manipulation}
+  button.ghost{background:transparent;color:var(--ink)}
+  button:disabled{opacity:.35;cursor:default}
+  button:focus-visible{outline:3px solid #f2c14e;outline-offset:2px}
+  .stage{display:grid;grid-template-columns:minmax(130px,.8fr) minmax(0,4fr) minmax(130px,.8fr);gap:16px;min-height:0}
+  .team{align-self:center;background:var(--card);border:3px solid var(--line);border-radius:20px;padding:16px;text-align:center}
+  .team h2{margin:0;font-family:var(--display);font-size:clamp(18px,2.2vw,28px)}
+  .team .cnt{font-size:clamp(40px,6vw,76px);font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+  .team .lbl{color:var(--muted)}
+  .t0 h2,.t0 .cnt{color:var(--t0)} .t1 h2,.t1 .cnt{color:var(--t1)}
+  .main{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:clamp(14px,2.5vh,28px) clamp(16px,2.5vw,36px);
+    display:grid;grid-template-rows:auto 1fr auto auto;min-height:0;box-shadow:0 8px 24px -18px rgba(60,50,30,.45)}
+  .meta{display:flex;justify-content:space-between;align-items:baseline;gap:10px;color:var(--muted);font-weight:700;font-size:clamp(15px,1.6vw,22px)}
+  .pts{color:var(--accent)}
+  .clues{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:clamp(6px,1.2vh,14px);min-height:0}
+  .clue{display:grid;grid-template-columns:clamp(38px,4vw,56px) 1fr;gap:14px;align-items:center;border-radius:16px;padding:clamp(8px,1.4vh,16px) 16px;background:#fff;border:2px dashed var(--chip-line);
+    font-family:var(--display);font-size:clamp(20px,2.7vw,40px);line-height:1.2;min-height:clamp(52px,10vh,104px)}
+  .clue .no{width:clamp(38px,4vw,56px);height:clamp(38px,4vw,56px);border-radius:50%;background:var(--chip);display:grid;place-items:center;font-family:var(--body);font-size:.7em;font-weight:700;color:var(--muted)}
+  .clue.on{border-style:solid;border-color:var(--accent);background:var(--accent-soft)}
+  .clue.on .no{background:var(--accent);color:#fff}
+  .clue .txt{color:transparent}
+  .clue.on .txt{color:var(--ink)}
+  .answer{text-align:center;font-family:var(--display);font-weight:700;font-size:clamp(30px,4.6vw,64px);color:var(--ok);min-height:1.3em;margin:8px 0}
+  .answer .sub{display:block;font-family:var(--body);font-size:.36em;color:var(--muted);font-weight:700}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+  .controls button{font-size:clamp(16px,1.8vw,22px);padding:11px 24px}
+  .controls .b0{background:var(--t0);border-color:var(--t0)} .controls .b1{background:var(--t1);border-color:var(--t1)} .controls .bg{background:var(--gray);border-color:var(--gray)}
+  .controls .acc{background:var(--accent);border-color:var(--accent)}
+  footer{text-align:center;color:var(--muted);font-size:.85em}
+  .end{display:none;place-items:center;text-align:center}
+  .end.show{display:grid}
+  .end .big{font-family:var(--display);font-size:clamp(34px,5vw,72px);margin:0}
+  @media (max-width:760px){.stage{grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr}.main{grid-column:1/-1;grid-row:2}.team{padding:8px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Kdo jsem? · Protista</h1>
+    <div class="btns"><button class="ghost" id="rulesBtn" type="button">Pravidla</button><button class="ghost" id="newgame" type="button">Nová hra</button></div>
+  </header>
+  <div class="stage">
+    <div class="team t0"><h2>Oranžoví</h2><div class="cnt" id="s0">0</div><div class="lbl">bodů</div></div>
+    <section class="main" id="main">
+      <div class="meta"><span id="round"></span><span class="pts" id="pts"></span></div>
+      <ol class="clues" id="clues"></ol>
+      <div class="answer" id="answer"></div>
+      <div class="controls" id="controls"></div>
+    </section>
+    <section class="main end" id="end"><div><p class="big" id="endtxt"></p><p class="meta" style="justify-content:center" id="endsub"></p><div class="controls" style="margin-top:18px"><button type="button" id="again">Hrát znovu</button></div></div></section>
+    <div class="team t1"><h2>Modří</h2><div class="cnt" id="s1">0</div><div class="lbl">bodů</div></div>
+  </div>
+  <footer>Biologie · Protista – hlavní skupiny · Gymnázium Joachima Barranda Beroun</footer>
+</div>
+<script>
+// nápovědy od nejtěžší po nejlehčí; body 4 → 3 → 2 → 1
+const R = [
+  ["TREPKA","nálevníci · Alveolata",["Žiju ve sladké vodě bohaté na organické látky.","Mám dvě jádra – velké a malé.","Pohybuji se pomocí brv.","Mám tvar střevíčku."]],
+  ["ZIMNIČKA","výtrusovci · Alveolata",["Jsem vnitrobuněčný parazit.","Mám apikální komplex.","Množím se v játrech a v červených krvinkách člověka.","Přenáší mě komár Anopheles."]],
+  ["PLÍSEŇ BRAMBOROVÁ","oomycety · Stramenopila",["Vypadám jako houba, ale houba nejsem.","Šířím se zoosporami, hlavně za vlhka.","Napadám brambory a rajčata.","V 19. století jsem způsobila hladomor v Irsku."]],
+  ["ROZSIVKA","Stramenopila",["Mám hnědé barvivo fukoxantin.","Při dělení se postupně zmenšuji.","Vyrábím asi pětinu kyslíku na Zemi.","Mám křemičitou schránku ze dvou misek."]],
+  ["CHALUHA","Stramenopila",["Mám chlorofyl a + c a fukoxantin.","Vyrábí se ze mě alginát.","Moje stélka má vzdušné měchýřky.","Tvořím podmořské kelpové lesy."]],
+  ["MĚŇAVKA VELKÁ","Amoebozoa",["Patřím do Amoebozoa.","Žiju v bahně na dně stojatých vod.","Nemám stálý tvar těla.","Pohybuji se laločnatými panožkami."]],
+  ["HLENKA","Amoebozoa",["Žiju na tlejícím dřevě v lese.","Dříve mě řadili k houbám.","Tvořím plodnice s výtrusy.","Jsem žluté mnohojaderné plazmodium."]],
+  ["KRÁSNOOČKO","Discoba",["Mám pelikulu a umím měnit tvar.","Můj plastid má tři membrány.","Ve tmě se živím heterotrofně.","Mám červenou světločivnou skvrnu – stigma."]],
+  ["TRYPANOZOMA","Discoba",["Mám kinetoplast.","Neustále měním povrchovou bílkovinu, a tak unikám imunitě.","Způsobuji africkou spavou nemoc.","Přenáší mě moucha tse-tse."]],
+  ["LAMBLIE","Metamonada",["Žiju bez kyslíku a mám mitozomy.","Mám dvě jádra a čtyři páry bičíků.","Šířím se cystami ve vodě.","Přísavným diskem se držím v tenkém střevě."]],
+  ["TRUBÉNKA","Opisthokonta",["Patřím do Opisthokont.","Mám jediný bičík.","Kolem bičíku mám límeček, na kterém chytám bakterie.","Jsem nejbližší jednobuněčný příbuzný živočichů."]],
+  ["DÍRKONOŠEC","Rhizaria",["Žiju v moři, často v planktonu.","Mám jemné síťovité panožky.","Z mých schránek vznikl vápenec pyramid v Gíze.","Mám vápenitou schránku s otvory."]],
+  ["KOKOLITKA","Haptista",["Mám haptonemu.","Moje květy jsou vidět z vesmíru.","Ovlivňuji vznik mraků.","Z mých vápenitých destiček vznikla křída."]],
+  ["PLÁŠTĚNKA","zelené řasy · Archaeplastida",["Patřím do Archaeplastida.","Mám chlorofyl a + b a škrob v plastidu.","Jsem jednobuněčná se dvěma stejnými bičíky.","Latinsky se jmenuji Chlamydomonas."]],
+];
+const TEAM = ["Oranžoví","Modří"], $ = id => document.getElementById(id);
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+let order, k, shown, score, done;
+function newGame() { order = shuffle(R.map((_, i) => i)); k = 0; score = [0, 0]; load(); }
+function load() { shown = 1; done = false; $("main").style.display = ""; $("end").classList.remove("show"); render(); }
+const pts = () => 5 - shown;
+function render() {
+  const [name, grp, clues] = R[order[k]];
+  $("round").textContent = `Hádanka ${k + 1} z ${order.length}`;
+  $("pts").textContent = done ? "" : `Teď za ${pts()} ${pts() === 1 ? "bod" : "body"}`;
+  $("clues").innerHTML = clues.map((c, i) => `<li class="clue ${i < shown ? "on" : ""}"><span class="no">${i + 1}</span><span class="txt">${c}</span></li>`).join("");
+  $("answer").innerHTML = done ? `${name}<span class="sub">${grp}</span>` : "";
+  $("s0").textContent = score[0]; $("s1").textContent = score[1];
+  const c = $("controls");
+  if (!done) {
+    c.innerHTML = `<button type="button" class="acc" id="more" ${shown >= 4 ? "disabled" : ""}>Další nápověda</button><button type="button" id="reveal">Ukázat řešení</button>`;
+    $("more").onclick = () => { if (shown < 4) { shown++; render(); } };
+    $("reveal").onclick = () => { done = true; render(); };
+  } else {
+    const p = pts();
+    c.innerHTML = `<button type="button" class="b0" id="g0">+${p} Oranžoví</button><button type="button" class="b1" id="g1">+${p} Modří</button><button type="button" class="bg" id="g2">Nikdo</button>`;
+    $("g0").onclick = () => award(0, p); $("g1").onclick = () => award(1, p); $("g2").onclick = () => award(null, 0);
+  }
+}
+function award(t, p) {
+  if (t !== null) score[t] += p;
+  k++;
+  if (k < order.length) return load();
+  $("s0").textContent = score[0]; $("s1").textContent = score[1];
+  $("main").style.display = "none"; $("end").classList.add("show");
+  $("endtxt").textContent = score[0] === score[1] ? "Remíza!" : `Vítězí ${TEAM[score[0] > score[1] ? 0 : 1]}!`;
+  $("endtxt").style.color = score[0] === score[1] ? "var(--ink)" : `var(--t${score[0] > score[1] ? 0 : 1})`;
+  $("endsub").textContent = `Oranžoví ${score[0]} : ${score[1]} Modří`;
+}
+$("again").onclick = newGame;
+$("newgame").onclick = () => { if (confirm("Začít novou hru? Body se vynulují.")) newGame(); };
+$("rulesBtn").onclick = () => alert("Kdo jsem?\n\nNápovědy se odkrývají postupně od nejtěžší po nejlehčí.\nKdo uhodne organismus dřív, získá víc bodů: po 1. nápovědě 4 body, po 2. 3 body, po 3. 2 body, po 4. 1 bod.\nTýmy se mohou hlásit kdykoli, špatná odpověď = tým v této hádance už neodpovídá.");
+newGame();
+</script>
+</body>
+</html>

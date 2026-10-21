@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pravda, nebo lež? – Protista</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦠</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#f3eee4; --card:#fffdf8; --ink:#2b2a33; --muted:#76705f; --line:#ddd2bd;
+    --accent:#1f4e79; --accent-soft:#e1ecf6; --chip:#efe3c8; --chip-line:#c9b68f;
+    --ok:#2f7d5b; --ok-soft:#dcefe4; --bad:#b3412e; --bad-soft:#f6ddd7;
+    --t0:#e0782b; --t0-soft:#fbe3cf; --t1:#2b6cb0; --t1-soft:#d8e6f6; --gray:#8b8a85;
+    --display:"Literata",Georgia,serif; --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:var(--body);line-height:1.35;overflow:hidden}
+  .app{height:100vh;height:100dvh;display:grid;grid-template-rows:auto 1fr auto;padding:12px 16px;gap:10px}
+  header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+  h1{font-family:var(--display);font-size:clamp(22px,3.2vw,38px);margin:0;line-height:1.1}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-weight:700;border-radius:999px;padding:9px 18px;cursor:pointer;border:1.5px solid var(--ink);background:var(--ink);color:#fff;touch-action:manipulation}
+  button.ghost{background:transparent;color:var(--ink)}
+  button:focus-visible{outline:3px solid #f2c14e;outline-offset:2px}
+  .stage{display:grid;grid-template-columns:minmax(130px,.8fr) minmax(0,4fr) minmax(130px,.8fr);gap:16px;min-height:0}
+  .team{align-self:center;background:var(--card);border:3px solid var(--line);border-radius:20px;padding:16px;text-align:center}
+  .team h2{margin:0;font-family:var(--display);font-size:clamp(18px,2.2vw,28px)}
+  .team .cnt{font-size:clamp(40px,6vw,76px);font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+  .team .lbl{color:var(--muted)}
+  .t0 h2,.t0 .cnt{color:var(--t0)} .t1 h2,.t1 .cnt{color:var(--t1)}
+  .main{background:var(--card);border:1px solid var(--line);border-radius:24px;padding:clamp(16px,3vh,36px) clamp(16px,3vw,44px);
+    display:grid;grid-template-rows:auto 1fr auto auto;min-height:0;text-align:center;box-shadow:0 8px 24px -18px rgba(60,50,30,.45)}
+  .main.T{background:var(--ok-soft);border-color:var(--ok)} .main.F{background:var(--bad-soft);border-color:var(--bad)}
+  .meta{display:flex;justify-content:space-between;color:var(--muted);font-weight:700;font-size:clamp(15px,1.6vw,22px)}
+  .st{align-self:center;font-family:var(--display);font-size:clamp(30px,4.8vw,68px);line-height:1.2;text-wrap:balance;margin:0}
+  .verdict{font-size:clamp(34px,5vw,72px);font-weight:700;line-height:1.1}
+  .verdict.T{color:var(--ok)} .verdict.F{color:var(--bad)}
+  .why{font-size:clamp(18px,2.1vw,30px);margin:6px 0 0}
+  .tbox{max-width:700px;width:100%;margin:0 auto}
+  .tnum{font-weight:700;font-size:clamp(26px,3vw,42px);font-variant-numeric:tabular-nums;color:var(--accent)}
+  .tnum.out{color:var(--bad)}
+  .timer{height:16px;background:var(--line);border-radius:99px;overflow:hidden;margin-top:6px}
+  .timer i{display:block;height:100%;width:100%;background:var(--accent)}
+  .timer.low i{background:var(--bad)}
+  .controls{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:14px}
+  .controls button{font-size:clamp(16px,1.8vw,22px);padding:11px 24px}
+  .controls .b0{background:var(--t0);border-color:var(--t0)} .controls .b1{background:var(--t1);border-color:var(--t1)}
+  .controls .b0.off{background:transparent;color:var(--t0)} .controls .b1.off{background:transparent;color:var(--t1)}
+  .controls .acc{background:var(--accent);border-color:var(--accent)}
+  footer{text-align:center;color:var(--muted);font-size:.85em}
+  @media (max-width:760px){.stage{grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr}.main{grid-column:1/-1;grid-row:2}.team{padding:8px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Pravda, nebo lež? · Protista</h1>
+    <div class="btns"><button class="ghost" id="tset" type="button">⏱ 10 s</button><button class="ghost" id="rulesBtn" type="button">Pravidla</button><button class="ghost" id="newgame" type="button">Nová hra</button></div>
+  </header>
+  <div class="stage">
+    <div class="team t0"><h2>Oranžoví</h2><div class="cnt" id="s0">0</div><div class="lbl">bodů</div></div>
+    <section class="main" id="main"></section>
+    <div class="team t1"><h2>Modří</h2><div class="cnt" id="s1">0</div><div class="lbl">bodů</div></div>
+  </div>
+  <footer>Biologie · Protista – hlavní skupiny · Gymnázium Joachima Barranda Beroun</footer>
+</div>
+<script>
+const S = [
+  ["Chaluhy jsou rostliny.",false,"Patří ke stramenopilám, mají stélku, ne listy."],
+  ["Rozsivky vyrábějí asi pětinu kyslíku na Zemi.",true,"Jsou hlavní složkou mořského planktonu."],
+  ["Plíseň bramborová je houba.",false,"Je to oomyceta ze skupiny Stramenopila."],
+  ["Trepka má dvě jádra.",true,"Velký makronukleus a malý mikronukleus."],
+  ["Malárii přenáší moucha tse-tse.",false,"Malárii přenáší komár Anopheles, tse-tse přenáší spavou nemoc."],
+  ["Zooxantely žijící v korálech jsou obrněnky.",true,"Dodávají korálům cukry z fotosyntézy."],
+  ["Dírkonošci mají křemičitou schránku.",false,"Mají vápenitou schránku, křemičitou kostru mají mřížovci."],
+  ["Pyramidy v Gíze jsou z vápence plného schránek dírkonošců.",true,"Jde o fosilní penízkovce (nummulity)."],
+  ["Měňavka se pohybuje bičíkem.",false,"Pohybuje se laločnatými panožkami."],
+  ["Hlenky se dříve řadily k houbám.",true,"Tvoří plodnice s výtrusy, ale patří do Amoebozoa."],
+  ["Naegleria fowleri patří mezi Amoebozoa.",false,"Patří do Discoba – „měňavka“ není systematický pojem."],
+  ["Trubénky jsou nejbližší jednobuněční příbuzní živočichů.",true,"Jejich límečková buňka připomíná choanocyt hub (živočišných)."],
+  ["Krásnoočko se ve tmě živí heterotrofně.",true,"Je mixotrofní."],
+  ["Plastid krásnoočka má dvě membrány.",false,"Má tři – vznikl sekundární endosymbiózou se zelenou řasou."],
+  ["Lamblie se šíří cystami ve vodě.",true,"Cysty jsou odolné i vůči chloru."],
+  ["Bičenka poševní tvoří cysty.",false,"Cysty netvoří, přenáší se jen přímým kontaktem."],
+  ["Termiti by bez trichonymf nestrávili dřevo.",true,"Jde o obligátní symbiózu."],
+  ["Ruduchy mají bičíky.",false,"Ruduchy nemají bičíky v žádném stadiu."],
+  ["Agar se vyrábí z ruduch.",true,"Používá se na živné půdy i v kuchyni."],
+  ["Křída vznikla z vápenitých destiček kokolitek.",true,"Například bílé útesy u Doveru."],
+];
+const $ = id => document.getElementById(id);
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const TOPTS = [10, 15, 20, 0, 5]; let ti = 0, tInt = null;
+const TSEC = () => TOPTS[ti];
+let order, k, score, got;
+function newGame() { order = shuffle(S.map((_, i) => i)); k = 0; score = [0, 0]; ask(); }
+function paintScore() { $("s0").textContent = score[0]; $("s1").textContent = score[1]; }
+function ask() {
+  paintScore(); stopTimer();
+  const [st] = S[order[k]], m = $("main"); m.className = "main";
+  m.innerHTML = `<div class="meta"><span>Výrok ${k + 1} z ${order.length}</span><span>PRAVDA, nebo LEŽ?</span></div>
+    <p class="st">${st}</p>
+    ${TSEC() ? `<div class="tbox"><div class="tnum" id="tnum">${TSEC()} s</div><div class="timer" id="timer"><i id="tbar"></i></div></div>` : "<div></div>"}
+    <div class="controls"><button type="button" class="acc" id="rev">Odhalit</button></div>`;
+  $("rev").onclick = reveal;
+  startTimer();
+}
+function reveal() {
+  stopTimer();
+  const [st, t, why] = S[order[k]], m = $("main"); m.className = "main " + (t ? "T" : "F");
+  got = [false, false];
+  m.innerHTML = `<div class="meta"><span>Výrok ${k + 1} z ${order.length}</span><span>Kdo odpověděl správně? (lze oba)</span></div>
+    <p class="st" style="font-size:clamp(24px,3.4vw,48px)">${st}</p>
+    <div><div class="verdict ${t ? "T" : "F"}">${t ? "PRAVDA" : "LEŽ"}</div><p class="why">${why}</p></div>
+    <div class="controls"><button type="button" class="b0 off" id="g0">✓ Oranžoví</button><button type="button" class="b1 off" id="g1">✓ Modří</button>
+    <button type="button" id="next">${k + 1 < order.length ? "Další výrok →" : "Výsledky"}</button></div>`;
+  [0, 1].forEach(i => $("g" + i).onclick = () => { got[i] = !got[i]; $("g" + i).classList.toggle("off", !got[i]); });
+  $("next").onclick = () => { got.forEach((g, i) => { if (g) score[i]++; }); k++; k < order.length ? ask() : end(); };
+}
+function end() {
+  paintScore();
+  const w = score[0] === score[1] ? null : score[0] > score[1] ? 0 : 1, m = $("main"); m.className = "main";
+  m.innerHTML = `<div class="meta"><span>Konec hry</span><span></span></div>
+    <p class="st" style="color:${w === null ? "var(--ink)" : `var(--t${w})`}">${w === null ? "Remíza!" : `Vítězí ${["Oranžoví", "Modří"][w]}!`}</p>
+    <div class="why" style="font-weight:700">Oranžoví ${score[0]} : ${score[1]} Modří</div>
+    <div class="controls"><button type="button" id="again">Hrát znovu</button></div>`;
+  $("again").onclick = newGame;
+}
+function beep() { try { const a = new (window.AudioContext || window.webkitAudioContext)(), o = a.createOscillator(), g = a.createGain();
+  o.frequency.value = 660; o.connect(g); g.connect(a.destination); g.gain.setValueAtTime(.25, a.currentTime); g.gain.exponentialRampToValueAtTime(.001, a.currentTime + .6); o.start(); o.stop(a.currentTime + .6); } catch (e) {} }
+function startTimer() {
+  stopTimer(); if (!TSEC()) return;
+  const end = Date.now() + TSEC() * 1000;
+  tInt = setInterval(() => {
+    if (!$("tnum")) return stopTimer();
+    const left = Math.max(0, end - Date.now()), sec = Math.ceil(left / 1000);
+    $("tbar").style.width = (left / (TSEC() * 1000) * 100) + "%";
+    $("timer").classList.toggle("low", sec <= 3);
+    $("tnum").textContent = left ? sec + " s" : "Čas vypršel!";
+    $("tnum").classList.toggle("out", !left);
+    if (!left) { stopTimer(); beep(); }
+  }, 100);
+}
+function stopTimer() { if (tInt) { clearInterval(tInt); tInt = null; } }
+$("tset").onclick = () => { ti = (ti + 1) % TOPTS.length; $("tset").textContent = TSEC() ? `⏱ ${TSEC()} s` : "⏱ vyp."; };
+$("newgame").onclick = () => { if (confirm("Začít novou hru? Body se vynulují.")) newGame(); };
+$("rulesBtn").onclick = () => alert("Pravda, nebo lež?\n\nPo zobrazení výroku se oba týmy rozhodnou současně (např. kartičkou, rukou nahoru = pravda, dolů = lež).\nPo odhalení klepni na týmy, které odpověděly správně – každý získá bod.\nTlačítko ⏱ mění časový limit (10, 15, 20 s, vypnuto, 5 s).");
+newGame();
+</script>
+</body>
+</html>
