@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AZ-kvíz – Protista</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦠</text></svg>">
+<link href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --page:#f3eee4; --card:#fffdf8; --ink:#2b2a33; --muted:#76705f; --line:#ddd2bd;
+    --accent:#1f4e79; --accent-soft:#e1ecf6; --chip:#efe3c8; --chip-line:#c9b68f;
+    --ok:#2f7d5b; --bad:#b3412e;
+    --t0:#e0782b; --t0-soft:#fbe3cf; --t1:#2b6cb0; --t1-soft:#d8e6f6; --gray:#8b8a85;
+    --display:"Literata",Georgia,serif; --body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:var(--body);line-height:1.4;overflow:hidden}
+  .app{height:100vh;height:100dvh;display:grid;grid-template-rows:auto 1fr auto;padding:12px 16px}
+  header{display:flex;justify-content:space-between;align-items:center;gap:12px}
+  h1{font-family:var(--display);font-size:clamp(22px,3.2vw,38px);margin:0;line-height:1.1}
+  .btns{display:flex;gap:8px;flex-wrap:wrap}
+  button{font:inherit;font-weight:700;border-radius:999px;padding:9px 18px;cursor:pointer;border:1.5px solid var(--ink);background:var(--ink);color:#fff;touch-action:manipulation}
+  button.ghost{background:transparent;color:var(--ink)}
+  button:focus-visible{outline:3px solid #f2c14e;outline-offset:2px}
+  .stage{display:grid;grid-template-columns:minmax(120px,1fr) auto minmax(120px,1fr);align-items:center;gap:16px;min-height:0}
+  .team{background:var(--card);border:3px solid var(--line);border-radius:20px;padding:16px;text-align:center;transition:border-color .2s, box-shadow .2s}
+  .team h2{margin:0;font-family:var(--display);font-size:clamp(18px,2.2vw,28px)}
+  .team .cnt{font-size:clamp(36px,5vw,64px);font-weight:700;line-height:1.1;font-variant-numeric:tabular-nums}
+  .team .lbl{color:var(--muted);font-size:.9em}
+  .team.t0 h2,.team.t0 .cnt{color:var(--t0)} .team.t1 h2,.team.t1 .cnt{color:var(--t1)}
+  .team.on.t0{border-color:var(--t0);box-shadow:0 0 0 4px var(--t0-soft)}
+  .team.on.t1{border-color:var(--t1);box-shadow:0 0 0 4px var(--t1-soft)}
+  .team .turn{visibility:hidden;margin-top:6px;font-weight:700}
+  .team.on .turn{visibility:visible}
+  #board{position:relative}
+  .hex{position:absolute;border:none;padding:0;border-radius:0;clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%);
+    background:var(--chip-line);display:grid;place-items:center;cursor:pointer;color:var(--ink)}
+  .hex .in{position:absolute;inset:4px;clip-path:inherit;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .hex .n{font-size:calc(var(--h)*.16);color:var(--muted);font-weight:700;line-height:1}
+  .hex .l{font-family:var(--display);font-size:calc(var(--h)*.3);font-weight:700;line-height:1.05}
+  .hex:hover .in{background:var(--accent-soft)}
+  .hex.o0 .in{background:var(--t0);color:#fff} .hex.o1 .in{background:var(--t1);color:#fff}
+  .hex.o0 .n,.hex.o1 .n{color:rgba(255,255,255,.8)}
+  .hex.g .in{background:var(--gray);color:#fff} .hex.g .n{color:rgba(255,255,255,.8)}
+  .hex.o0,.hex.o1{cursor:default}
+  .hex.win .in{animation:pulse 1s ease-in-out infinite alternate}
+  @keyframes pulse{to{filter:brightness(1.25)}}
+  @media (prefers-reduced-motion:reduce){.hex.win .in{animation:none}}
+  footer{text-align:center;color:var(--muted);font-size:.85em;padding-top:6px}
+
+  /* otázka přes celou obrazovku */
+  .modal{position:fixed;inset:0;background:rgba(43,42,51,.55);display:none;place-items:center;padding:3vh 3vw;z-index:10}
+  .modal.show{display:grid}
+  .qcard{background:var(--card);border-radius:24px;padding:clamp(20px,4vh,48px) clamp(20px,4vw,56px);width:min(1100px,100%);max-height:94vh;overflow:auto;text-align:center;
+    box-shadow:0 20px 60px -20px rgba(0,0,0,.5);border-top:10px solid var(--accent)}
+  .qcard.t0{border-top-color:var(--t0)} .qcard.t1{border-top-color:var(--t1)}
+  .qmeta{color:var(--muted);font-weight:700;font-size:clamp(16px,1.8vw,22px)}
+  .qtext{font-family:var(--display);font-size:clamp(26px,4.2vw,58px);line-height:1.2;margin:16px 0 22px;text-wrap:balance}
+  .ans{display:none;font-size:clamp(28px,4.4vw,60px);font-weight:700;color:var(--ok);margin:0 0 22px}
+  .ans.show{display:block}
+  .qbtns{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+  .qbtns button{font-size:clamp(17px,1.9vw,24px);padding:12px 26px}
+  .qbtns .b0{background:var(--t0);border-color:var(--t0)} .qbtns .b1{background:var(--t1);border-color:var(--t1)}
+  .qbtns .bg{background:var(--gray);border-color:var(--gray)}
+  .qbtns .ok{background:var(--ok);border-color:var(--ok)} .qbtns .bad{background:var(--bad);border-color:var(--bad)}
+  .help{color:var(--muted);font-size:clamp(14px,1.4vw,18px);margin-top:16px}
+  .winbox .qtext{font-size:clamp(34px,5vw,72px)}
+  @media (max-width:760px){.stage{grid-template-columns:1fr 1fr;grid-template-rows:auto 1fr}.stage #wrap{grid-column:1/-1;grid-row:2}.team{padding:8px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>AZ-kvíz · Protista</h1>
+    <div class="btns">
+      <button class="ghost" id="undo" type="button">↶ Zpět</button>
+      <button class="ghost" id="rules" type="button">Pravidla</button>
+      <button class="ghost" id="newgame" type="button">Nová hra</button>
+    </div>
+  </header>
+  <div class="stage">
+    <div class="team t0" id="team0"><h2>Oranžoví</h2><div class="cnt" id="c0">0</div><div class="lbl">políček</div><div class="turn">▶ na tahu</div></div>
+    <div id="wrap"><div id="board"></div></div>
+    <div class="team t1" id="team1"><h2>Modří</h2><div class="cnt" id="c1">0</div><div class="lbl">políček</div><div class="turn">▶ na tahu</div></div>
+  </div>
+  <footer>Biologie · Protista – hlavní skupiny · Gymnázium Joachima Barranda Beroun</footer>
+</div>
+
+<div class="modal" id="modal" role="dialog" aria-modal="true"><div class="qcard" id="qcard"></div></div>
+
+<script>
+// otázky v pořadí políček 1–28 (odpověď začíná zobrazeným písmenem)
+const Q = [
+  ["A","Ploché měchýřky pod membránou nálevníků, obrněnek a výtrusovců","ALVEOLY"],
+  ["B","Nálevníci žijící v bachoru přežvýkavců","BACHOŘCI"],
+  ["C","Rod sladkovodní obrněnky s rohovitými výběžky","CERATIUM"],
+  ["Č","Přemnožení toxických mořských obrněnek – „… příliv“","ČERVENÝ (příliv)"],
+  ["D","Český název skupiny Foraminifera","DÍRKONOŠCI"],
+  ["E","Rod kokolitky, jejíž květy jsou vidět z vesmíru","EMILIANIA"],
+  ["F","Hnědé barvivo rozsivek a chaluh","FUKOXANTIN"],
+  ["G","Planktonní dírkonošec s vícekomůrkovou vápenitou schránkou","GLOBIGERINA"],
+  ["H","Amoebozoa s plazmodiem a plodnicemi","HLENKY"],
+  ["CH","Hnědá mořská řasa se vzdušnými měchýřky","CHALUHA"],
+  ["I","Země, kde plíseň bramborová způsobila hladomor","IRSKO"],
+  ["J","Prvek, který se získával z popela chaluh","JÓD"],
+  ["K","Vápenité destičky na povrchu kokolitek","KOKOLITY"],
+  ["L","Bičíkovec tenkého střeva s přísavným diskem","LAMBLIE"],
+  ["M","Nemoc, kterou způsobuje zimnička","MALÁRIE"],
+  ["N","Zbytek jádra pohlcené ruduchy u kryptomonád","NUKLEOMORF"],
+  ["O","Skupina stramenopil, kam patří plíseň bramborová","OOMYCETY"],
+  ["P","Mnohojaderná masa hlenky bez buněčných přepážek","PLAZMODIUM"],
+  ["R","Řasy s červeným barvivem fykoerytrinem","RUDUCHY"],
+  ["Ř","Pracovní označení pro autotrofní protista","ŘASY"],
+  ["S","Superskupina Stramenopila + Alveolata + Rhizaria (zkratka)","SAR"],
+  ["Š","Zásobní látka ruduch a zelených řas","ŠKROB"],
+  ["T","Nálevník tvaru střevíčku","TREPKA"],
+  ["U","Amébová … – nemoc působená měňavkou úplavičnou","ÚPLAVICE"],
+  ["V","Pulzující … odčerpává přebytečnou vodu","VAKUOLA"],
+  ["Z","Český název rodu Plasmodium","ZIMNIČKA"],
+  ["Ž","Ruducha čistých chladných potoků – „žabí …“","ŽABÍ SÍMĚ"],
+  ["K","Bičíkovec s pelikulou a stigmatem, ve tmě se živí heterotrofně","KRÁSNOOČKO"],
+];
+// otázky ANO/NE na šedá políčka
+const YN = [
+  ["Chaluhy jsou rostliny.",false],
+  ["Trepka má dvě jádra – makronukleus a mikronukleus.",true],
+  ["Obrněnky mají dva bičíky.",true],
+  ["Zimničku přenáší moucha tse-tse.",false],
+  ["Rozsivky mají křemičitou schránku.",true],
+  ["Ruduchy mají bičíky.",false],
+  ["Lamblie tvoří cysty.",true],
+  ["Krásnoočko je mixotrofní.",true],
+  ["Naegleria fowleri patří mezi Amoebozoa.",false],
+  ["Mřížovci mají kostru z oxidu křemičitého.",true],
+  ["Plíseň bramborová patří k houbám.",false],
+  ["Trubénky jsou nejbližší jednobuněční příbuzní živočichů.",true],
+  ["Dírkonošci mají křemičitou schránku.",false],
+  ["Trypanozomu přenáší komár Anopheles.",false],
+  ["Kokolitky tvoří křídu.",true],
+  ["Bičenka poševní tvoří cysty.",false],
+];
+
+const ROWS = 7, $ = id => document.getElementById(id);
+const cells = []; for (let r = 0; r < ROWS; r++) for (let c = 0; c <= r; c++) cells.push({ r, c });
+const idx = (r, c) => r * (r + 1) / 2 + c;
+const neigh = (r, c) => [[r-1,c-1],[r-1,c],[r,c-1],[r,c+1],[r+1,c],[r+1,c+1]].filter(([a,b]) => a >= 0 && a < ROWS && b >= 0 && b <= a);
+let owner, turn, history, ynDeck, winner;
+const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const TEAM = ["Oranžoví", "Modří"];
+
+function newGame() { owner = cells.map(() => null); turn = 0; history = []; winner = null; ynDeck = shuffle(YN.map((_, i) => i)); closeModal(); render(); }
+
+function layout() {
+  const wrap = $("wrap"), board = $("board"), stage = document.querySelector(".stage");
+  const narrow = innerWidth <= 760;
+  const availH = stage.clientHeight - (narrow ? document.querySelector(".team").offsetHeight + 16 : 0) - 8;
+  const availW = narrow ? stage.clientWidth : stage.clientWidth - 2 * 140 - 32;
+  const w = Math.min(availW / ROWS, availH / (5.5 * 1.1547)), h = w * 1.1547;
+  board.style.width = (ROWS * w) + "px"; board.style.height = (h + (ROWS - 1) * .75 * h) + "px";
+  board.style.setProperty("--h", h + "px");
+  cells.forEach(({ r, c }, i) => {
+    const el = $("h" + i); if (!el) return;
+    el.style.width = (w - 3) + "px"; el.style.height = (h - 3) + "px";
+    el.style.left = ((ROWS - 1 - r) * w / 2 + c * w) + "px"; el.style.top = (r * .75 * h) + "px";
+  });
+}
+
+function build() {
+  const board = $("board"); board.innerHTML = "";
+  cells.forEach((_, i) => {
+    const b = document.createElement("button"); b.className = "hex"; b.id = "h" + i; b.type = "button";
+    b.innerHTML = `<span class="in"><span class="n">${i + 1}</span><span class="l">${Q[i][0]}</span></span>`;
+    b.setAttribute("aria-label", `Políčko ${i + 1}, písmeno ${Q[i][0]}`);
+    b.addEventListener("click", () => openCell(i));
+    board.appendChild(b);
+  });
+}
+
+function render() {
+  cells.forEach((_, i) => { const el = $("h" + i); el.className = "hex" + (owner[i] === 0 ? " o0" : owner[i] === 1 ? " o1" : owner[i] === "g" ? " g" : ""); });
+  [0, 1].forEach(t => { $("c" + t).textContent = owner.filter(o => o === t).length; $("team" + t).classList.toggle("on", turn === t && winner === null); });
+  if (winner !== null) winPath(winner).forEach(i => $("h" + i).classList.add("win"));
+  $("undo").disabled = !history.length;
+}
+
+function winPath(t) {
+  // komponenta týmu, která se dotýká všech tří stran
+  const seen = new Set();
+  for (let s = 0; s < cells.length; s++) {
+    if (owner[s] !== t || seen.has(s)) continue;
+    const comp = [], st = [s]; seen.add(s);
+    while (st.length) { const i = st.pop(); comp.push(i); const { r, c } = cells[i];
+      neigh(r, c).forEach(([a, b]) => { const j = idx(a, b); if (owner[j] === t && !seen.has(j)) { seen.add(j); st.push(j); } }); }
+    const L = comp.some(i => cells[i].c === 0), R = comp.some(i => cells[i].c === cells[i].r), B = comp.some(i => cells[i].r === ROWS - 1);
+    if (L && R && B) return comp;
+  }
+  return [];
+}
+
+function setOwner(i, o) {
+  history.push({ i, prev: owner[i], turn });
+  owner[i] = o;
+  if (o === 0 || o === 1) { if (winPath(o).length) winner = o; }
+  turn = 1 - turn;
+  closeModal(); render();
+  if (winner !== null) showWin();
+}
+
+function card(cls, html) { const q = $("qcard"); q.className = "qcard " + cls; q.innerHTML = html; $("modal").classList.add("show"); }
+function closeModal() { $("modal").classList.remove("show"); }
+
+function openCell(i) {
+  if (winner !== null || owner[i] === 0 || owner[i] === 1) return;
+  if (owner[i] === "g") return openYN(i);
+  const [l, q, a] = Q[i];
+  card("t" + turn, `<div class="qmeta">Políčko ${i + 1} · písmeno ${l} · odpovídají <b style="color:var(--t${turn})">${TEAM[turn]}</b></div>
+    <div class="qtext">${q}</div><div class="ans" id="ans">${a}</div>
+    <div class="qbtns" id="qb"><button type="button" id="show">Ukázat odpověď</button><button type="button" class="ghost" id="cancel">Zavřít</button></div>`);
+  $("cancel").onclick = closeModal;
+  $("show").onclick = () => {
+    $("ans").classList.add("show");
+    $("qb").innerHTML = `<button type="button" class="b${turn}" id="r1">✓ ${TEAM[turn]}</button>
+      <button type="button" class="b${1 - turn}" id="r2">✓ ${TEAM[1 - turn]}</button>
+      <button type="button" class="bg" id="r3">Nikdo – šedé</button>`;
+    $("r1").onclick = () => setOwner(i, turn);
+    $("r2").onclick = () => setOwner(i, 1 - turn);
+    $("r3").onclick = () => setOwner(i, "g");
+  };
+}
+
+function openYN(i) {
+  if (!ynDeck.length) ynDeck = shuffle(YN.map((_, k) => k));
+  const [q, a] = YN[ynDeck.pop()];
+  card("t" + turn, `<div class="qmeta">Šedé políčko ${i + 1} · otázka ANO/NE · odpovídají <b style="color:var(--t${turn})">${TEAM[turn]}</b></div>
+    <div class="qtext">${q}</div><div class="ans" id="ans">${a ? "ANO" : "NE"}</div>
+    <div class="qbtns" id="qb"><button type="button" id="show">Ukázat odpověď</button><button type="button" class="ghost" id="cancel">Zavřít</button></div>
+    <p class="help">Správná odpověď = políčko získá tým na tahu, špatná = získá ho soupeř.</p>`);
+  $("cancel").onclick = closeModal;
+  $("show").onclick = () => {
+    $("ans").classList.add("show");
+    $("qb").innerHTML = `<button type="button" class="ok" id="r1">Odpověděli správně</button><button type="button" class="bad" id="r2">Odpověděli špatně</button>`;
+    $("r1").onclick = () => setOwner(i, turn);
+    $("r2").onclick = () => setOwner(i, 1 - turn);
+  };
+}
+
+function showWin() {
+  card("t" + winner + " winbox", `<div class="qmeta">Konec hry</div><div class="qtext" style="color:var(--t${winner})">Vítězí ${TEAM[winner]}!</div>
+    <p class="help">Spojili všechny tři strany pyramidy.</p>
+    <div class="qbtns"><button type="button" class="ghost" id="look">Prohlédnout pyramidu</button><button type="button" id="again">Nová hra</button></div>`);
+  $("look").onclick = closeModal; $("again").onclick = newGame;
+}
+
+$("undo").onclick = () => {
+  const h = history.pop(); if (!h) return;
+  owner[h.i] = h.prev; turn = h.turn; winner = null; closeModal(); render();
+};
+$("newgame").onclick = () => { if (!history.length || confirm("Začít novou hru? Rozehraná hra se smaže.")) newGame(); };
+$("rules").onclick = () => card("", `<div class="qtext" style="font-size:clamp(26px,3.2vw,42px)">Pravidla</div>
+  <div style="text-align:left;font-size:clamp(17px,1.9vw,24px);max-width:46ch;margin:0 auto">
+  <p>Dva týmy se střídají. Tým na tahu vybere políčko a odpovídá – odpověď začíná písmenem na políčku.</p>
+  <p>Když tým odpoví špatně, může odpovědět soupeř. Neví-li nikdo, políčko zešedne.</p>
+  <p>O šedé políčko se hraje otázkou <b>ANO/NE</b>: správně = políčko vaše, špatně = soupeřovo.</p>
+  <p>Vyhrává tým, který jako první <b>propojí všechny tři strany</b> pyramidy.</p></div>
+  <div class="qbtns" style="margin-top:16px"><button type="button" id="ok">Rozumím</button></div>`) || ($("ok").onclick = closeModal);
+$("modal").addEventListener("click", e => { if (e.target.id === "modal" && winner === null) closeModal(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+addEventListener("resize", layout);
+
+build(); newGame(); layout();
+</script>
+</body>
+</html>
